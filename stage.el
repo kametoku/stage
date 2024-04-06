@@ -25,6 +25,20 @@
 
 ;;; Commentary:
 
+
+;;; Customization
+(defgroup stage-mode nil
+  "Manage emacs window session easily."
+  :group 'tools
+  :group 'convenience
+  :link '(url-link :tag "GitHub" "https://github.com/kametoku/stage"))
+
+(defcustom stage-keymap-prefix nil
+  "Stage keymap prefix."
+  :group 'stage
+  :type 'string)
+
+
 (defvar stage-list nil
   "List of available stages.
 Alist of (NAME . (FRAME FRAME-PARAMETERS WINDOW-CONFIGURATION))")
@@ -162,8 +176,50 @@ With prefix argument, switch to the least-recently visited stage."
         (stage-list (message "no stage selected"))
         (t (message "no stage created"))))
 
+
+;;; Stage Minor Mode
+(defvar stage-command-map
+  (let ((map (make-sparse-keymap)))
+    (when stage-keymap-prefix
+      (define-key map (kbd stage-keymap-prefix) #'stage-switch-last))
+    (define-key map (kbd "c") #'stage-create)
+    (define-key map (kbd "g") #'stage-switch)
+    (define-key map (kbd "k") #'stage-kill)
+    (define-key map (kbd "K") #'stage-kill-all)
+    (define-key map (kbd "l") #'stage-switch-last)
+    (define-key map (kbd "s") #'stage-save)
+    (define-key map (kbd "w") #'stage-show)
+    map)
+  "Keymap for Stage commands after `stage-keymap-prefix'.")
+(fset 'stage-command-map stage-command-map)
+
+(defvar stage-mode-map
+  (let ((map (make-sparse-keymap)))
+;;     (define-key stage-mode-map (kbd "C-]") 'stage-command-map)
+    (when stage-keymap-prefix
+      (define-key map (kbd stage-keymap-prefix) stage-command-map))
+    map)
+  "Keymap for `stage-mode'.")
+
+(defun stage-setup ()
+  (setq stage-list nil)
+  (setq stage-current-stage nil))
+
+(defun stage-cleanup ()
+  (stage-kill-all t))
+
+(define-minor-mode stage-mode
+  "Minor mode to manage emacs window sessions.
+
+\\{stage-mode-map}"
+  :keymap stage-mode-map
+  :group 'stage
+  :require 'stage
+  :global t
+  (if stage-mode
+      (stage-setup)
+    (stage-cleanup)))
+
 (provide 'stage)
 
 ;; stage.el ends here
-
-
