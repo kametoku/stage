@@ -125,7 +125,8 @@ stage, we reload the current stage's saved configuration."
   (interactive (list (stage-read-name
                       "switch to stage: "
                       (let ((names (stage-names)))
-                        (append (delete (car names) names) (list (car names)))))))
+                        (when names
+                          (append (delete (car names) names) (list (car names))))))))
   (cond ((zerop (length name))
          (error "No name given."))
         ((null stage-list)
