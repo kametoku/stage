@@ -235,7 +235,8 @@ Ohterwise an error is raised."
   (if (null stage-current-stage)
       (message "Stage not created.")
     (stage-save-configuration stage-current-stage
-                              (stage-current-configuration))))
+                              (stage-current-configuration))
+    (message "Saved stage '%s'" stage-current-stage)))
 
 (defun stage-kill-all (&optional disable-prompt)
   "Kill all stages. Prompt the user to confirm if DISABLE-PROMPT is nil."
