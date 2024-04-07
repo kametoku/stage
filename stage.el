@@ -345,7 +345,7 @@ Define keys in stage presets."
   (interactive)
   (mapc (lambda (name)
           (let* ((preset (stage-preset name))
-                 (keys (stage-preset-options preset :key)))
+                 (keys (delete nil (stage-preset-options preset :key))))
             (mapc (lambda (key)
                     (define-key stage-command-map (kbd key)
                                 (cons (format "stage-switch [%s]" name)
