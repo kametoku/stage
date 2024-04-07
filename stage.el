@@ -113,6 +113,9 @@ NAME must represent an existing stage."
         (setf (nth 0 config) frame)))
     (set-window-configuration window-configuration)))
 
+(defun stage-reset-current-stage (&optional frame)
+  (setq stage-current-stage nil))
+
 
 ;;; Preset
 (defun stage-preset (name)
@@ -355,10 +358,12 @@ Define keys in stage presets."
 (defun stage-setup ()
   (setq stage-list nil)
   (setq stage-current-stage nil)
-  (stage-setup-preset))
+  (stage-setup-preset)
+  (add-hook 'after-make-frame-functions 'stage-reset-current-stage))
 
 (defun stage-cleanup ()
-  (stage-kill-all t))
+  (stage-kill-all t)
+  (remove-hook 'after-make-frame-functions 'stage-reset-current-stage))
 
 (define-minor-mode stage-mode
   "Minor mode to manage emacs window sessions.
