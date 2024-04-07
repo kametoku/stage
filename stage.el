@@ -192,7 +192,7 @@ Ohterwise an error is raised."
 
 (defun stage-revert (&optional disable-prompt)
   "Revert the current stage by initializing it."
-  (interactive)
+  (interactive "P")
   (unless stage-current-stage
     (error "No stage selected."))
   (when (or disable-prompt
