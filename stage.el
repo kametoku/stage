@@ -293,7 +293,8 @@ stage, we reload the current stage's saved configuration."
                (unless (stage-revert-maybe)
                  (let ((preset (stage-preset name)))
                    (stage-preset-run-commands preset :after-switch)
-                   (stage-preset-run-commands preset :command))))
+                   (stage-preset-run-commands preset :command))
+                 (stage-save)))
            (stage-create name)))))
 
 (defun stage-switch-last (arg)
