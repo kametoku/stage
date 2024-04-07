@@ -38,7 +38,33 @@
   :group 'stage
   :type 'string)
 
+(defcustom stage-new-stage-default-buffer "*scratch*"
+  "Default buffer to display in newly-created stage."
+  :type 'string
+  :group 'stage)
+
+(defcustom stage-presets nil
+  "List of default stage presets.
+
+Element of the list: (NAME [:keyword option...]...)
+
+:key                the hot key to create/switch to the stage.
+:init               commands, functions, files, and/or directories to
+                    call or open when the stage is created.
+                    The parameters could be string, list, or command.
+:default-directory  the default directory name of the stage.
+:after-switch       commands and so on when the stage is switched to.
+:command            commands and so on when the stage is created or
+                    switched to.
+:major-mode         primary major modes of the stage.
+                    When the stage is switched to and its major mode
+                    is not any of this parameters, the steage is reverted
+                    by initializing it (the stage is recreated)."
+  :group 'stage
+  :type 'list)
+
 
+;;; Stage
 (defvar stage-list nil
   "List of available stages.
 Alist of (NAME . (FRAME FRAME-PARAMETERS WINDOW-CONFIGURATION))")
@@ -87,21 +113,126 @@ NAME must represent an existing stage."
         (setf (nth 0 config) frame)))
     (set-window-configuration window-configuration)))
 
-(defun stage-create (&optional name)
+
+;;; Preset
+(defun stage-preset (name)
+  "Return the stage preset of NAME."
+  (cdr (assoc name stage-presets)))
+
+(defun stage-preset-names ()
+  "Return the list of all preset names."
+  (mapcar 'car stage-presets))
+
+(defun stage-preset-options (preset keyword)
+  "Return options for KEYWORD of stage preset PRESET."
+  (seq-take-while (lambda (elt) (not (keywordp elt)))
+                  (cdr (memq keyword preset))))
+
+(defun stage-run-command (command)
+  "Run COMMAND.
+If COMMAND is a string and there exists the directory, open it by `dired'.
+If COMMAND is a string and there exists the file, open it by `find-file`.
+If COMMAND is a list, `funcall' it.
+If COMMAND is an interactive function, `call-interactively' it.
+Ohterwise an error is raised."
+  (cond ((and (stringp command) (file-directory-p command))
+         (dired command))
+        ((and (stringp command) (file-exists-p command))
+         (find-file command))
+        ((stringp command)
+         (error "No such file or directory '%s'" command))
+        ((listp command) (funcall `(lambda () ,command)))
+        ((commandp command) (call-interactively command))
+        (t (error "Cannot handle command '%s'" command))))
+
+(defun stage-preset-run-commands (preset keyword)
+  "Run commands defined in parameters of KEYWORD from PRESET."
+  (let ((commands (stage-preset-options preset keyword)))
+    (mapc #'stage-run-command commands)))
+
+(defun stage-preset-set-default-directory (preset)
+  "Set `current-directory' accordingly :default-directory parameter in PRESET."
+  (let ((dir (car (stage-preset-options preset :default-directory))))
+    (when (listp dir)
+      (setq dir (funcall `(lambda () ,dir))))
+    (when dir
+      (setq current-directory dir))))
+
+
+;;; Interactive functions
+(defun stage-create (name &optional disable-prompt)
   "Create a new stage with NAME."
-  (interactive (list (read-string "stage name: ")))
+  (interactive (list (let ((names (stage-names)))
+                       (completing-read "create stage: " (stage-preset-names)
+                                        (lambda (preset)
+                                          (not (member preset names)))))))
   (when (zerop (length name))
     (error "No name given."))
   (when (string-equal name "*all*")
-    (error "System reserved space name '%S'." name))
-  (setq stage-list (cons (cons name (stage-current-configuration))
-                         (assoc-delete-all name stage-list)))
-  (setq stage-current-stage name))
+    (error "System reserved space name '%s'." name))
+  (when (or (not (stage-exists name))
+            disable-prompt
+            (y-or-n-p (format "revert existing stage '%s'? " name)))
+    (when stage-current-stage
+      (stage-save))
+    ;;
+    (delete-other-windows)
+    (select-window (split-window))
+    (delete-other-windows)
+    (switch-to-buffer stage-new-stage-default-buffer)
+    ;;
+    (let ((preset (stage-preset name)))
+      (stage-preset-run-commands preset :init)
+      (stage-preset-set-default-directory preset)
+      (stage-preset-run-commands preset :command))
+    ;;
+    (setq stage-current-stage name)
+    (setq stage-list (cons (cons name (stage-current-configuration))
+                           (assoc-delete-all name stage-list)))))
+
+(defun stage-revert (&optional disable-prompt)
+  "Revert the current stage by initializing it."
+  (interactive)
+  (unless stage-current-stage
+    (error "No stage selected."))
+  (when (or disable-prompt
+            (y-or-n-p (format "[%s] revert current stage? "
+                              stage-current-stage)))
+    (stage-create stage-current-stage t)))
+
+(defun stage-revert-maybe ()
+  (let* ((preset (stage-preset stage-current-stage))
+         (major-modes (stage-preset-options preset :major-mode)))
+    (when (and major-modes
+               (not (memq major-mode major-modes)))
+      (stage-revert t)
+      t)))
+
+(defvar stage-rename-hist nil)
+
+(defun stage-rename (name)
+  "Rename the current stage to NAME."
+  (interactive (if (null stage-current-stage)
+                   (error "No stage created or selected.")
+                 (list (read-string (format "[%s] rename stage: "
+                                            stage-current-stage)
+                                    nil 'stage-rename-hist))))
+  (cond ((zerop (length name))
+         (error "Invalid stage name."))
+        ((string-equal name stage-current-stage)
+         (error "Cannot rename to the same name."))
+        ((y-or-n-p (format "Rename %s to %s? " stage-current-stage name))
+         (setcar (assoc stage-current-stage stage-list) name)
+         (setq stage-current-stage name)
+         (stage-save))))
 
 (defun stage-save ()
   "Save the configuration for the current stage."
   (interactive)
-  (stage-create stage-current-stage))
+  (if (null stage-current-stage)
+      (message "Stage not created.")
+    (stage-save-configuration stage-current-stage
+                              (stage-current-configuration))))
 
 (defun stage-kill-all (&optional disable-prompt)
   "Kill all stages. Prompt the user to confirm if DISABLE-PROMPT is nil."
@@ -146,17 +277,20 @@ stage, we reload the current stage's saved configuration."
         ((null stage-list)
          (stage-create name))
         ((string-equal name stage-current-stage)
-         (stage-restore-configuration name))
+         (stage-restore-configuration name)
+         (stage-revert-maybe))
         (t
-         (when stage-current-stage
-           (stage-save-configuration stage-current-stage
-                                     (stage-current-configuration)))
+         (stage-save)
          (if (stage-exists name)
              (progn
                (setq stage-list (cons (assoc name stage-list)
                                       (assoc-delete-all name stage-list)))
                (setq stage-current-stage name)
-               (stage-restore-configuration name))
+               (stage-restore-configuration name)
+               (unless (stage-revert-maybe)
+                 (let ((preset (stage-preset name)))
+                   (stage-preset-run-commands preset :after-switch)
+                   (stage-preset-run-commands preset :command))))
            (stage-create name)))))
 
 (defun stage-switch-last (arg)
@@ -187,7 +321,9 @@ With prefix argument, switch to the least-recently visited stage."
     (define-key map (kbd "k") #'stage-kill)
     (define-key map (kbd "K") #'stage-kill-all)
     (define-key map (kbd "l") #'stage-switch-last)
+    (define-key map (kbd "r") #'stage-rename)
     (define-key map (kbd "s") #'stage-save)
+    (define-key map (kbd "v") #'stage-revert)
     (define-key map (kbd "w") #'stage-show)
     map)
   "Keymap for Stage commands after `stage-keymap-prefix'.")
@@ -195,15 +331,31 @@ With prefix argument, switch to the least-recently visited stage."
 
 (defvar stage-mode-map
   (let ((map (make-sparse-keymap)))
-;;     (define-key stage-mode-map (kbd "C-]") 'stage-command-map)
     (when stage-keymap-prefix
-      (define-key map (kbd stage-keymap-prefix) stage-command-map))
+      (define-key map (kbd stage-keymap-prefix) 'stage-command-map))
     map)
   "Keymap for `stage-mode'.")
 
+(defun stage-setup-preset ()
+  "Setup stage presets.
+Define keys in stage presets."
+  (interactive)
+  (mapc (lambda (name)
+          (let* ((preset (stage-preset name))
+                 (keys (stage-preset-options preset :key)))
+            (mapc (lambda (key)
+                    (define-key stage-command-map (kbd key)
+                                (cons (format "stage-switch [%s]" name)
+                                      `(lambda ()
+                                         (interactive)
+                                         (stage-switch ,name)))))
+                  keys)))
+        (stage-preset-names)))
+
 (defun stage-setup ()
   (setq stage-list nil)
-  (setq stage-current-stage nil))
+  (setq stage-current-stage nil)
+  (stage-setup-preset))
 
 (defun stage-cleanup ()
   (stage-kill-all t))
