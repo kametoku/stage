@@ -51,9 +51,9 @@
 Element of the list: (NAME [:keyword option...]...)
 
 :key                the hot key to create/switch to the stage.
-:init               commands, functions, files, and/or directories to
-                    call or open when the stage is created.
-                    The parameters could be string, list, or command.
+:init               commands, functions, files, directories, and/or buffer names
+                    to call or open when the stage is created.
+                    The parameters could be string, list, command, or function.
 :default-directory  the default directory name of the stage.
 :after-switch       commands and so on when the stage is switched to.
 :command            commands and so on when the stage is created or
@@ -160,6 +160,7 @@ NAME must represent an existing stage."
   "Run COMMAND.
 If COMMAND is a string and there exists the directory, open it by `dired'.
 If COMMAND is a string and there exists the file, open it by `find-file`.
+If COMMAND is a string and there exists tue buffer, open it by `switch-to-buffer'.
 If COMMAND is a list, `funcall' it.
 If COMMAND is an interactive function, `call-interactively' it.
 Ohterwise an error is raised."
@@ -167,6 +168,8 @@ Ohterwise an error is raised."
          (dired command))
         ((and (stringp command) (file-exists-p command))
          (find-file command))
+        ((and (stringp command) (get-buffer command))
+         (switch-to-buffer command))
         ((stringp command)
          (error "No such file or directory '%s'" command))
         ((listp command) (funcall `(lambda () ,command)))
