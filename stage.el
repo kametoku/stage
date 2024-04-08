@@ -72,6 +72,12 @@ See `projectile-switch-project-action' for more information."
   :group 'stage
   :type 'function)
 
+(defconst stage-mode-line-format
+  '(:eval (cond ((not stage-mode) "")
+                (stage-current-stage (format "[s:%s]" stage-current-stage))
+                (t "[s]"))))
+(put 'stage-mode-line-format 'risky-local-variable t)
+
 
 ;;; Utilities
 (defun stage--dir-local-variables (&optional directory)
