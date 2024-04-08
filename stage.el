@@ -26,6 +26,8 @@
 ;;; Commentary:
 
 
+(require 'projectile)
+
 ;;; Customization
 (defgroup stage-mode nil
   "Manage emacs window session easily."
@@ -62,6 +64,29 @@ Element of the list: (NAME [:keyword option...]...)
                     by initializing it (the stage is recreated)."
   :group 'stage
   :type 'list)
+
+(defcustom stage-projectile-switch-project-action #'projectile-dired
+  "Action invoked after creating stage with ‘stage-switch-projectile’.
+
+See `projectile-switch-project-action' for more information."
+  :group 'stage
+  :type 'function)
+
+
+;;; Utilities
+(defun stage--dir-local-variables (&optional directory)
+  "Return alist of directory local variables defined in \".dir-locals.el\"
+file of DIRECTORY."
+  (with-temp-buffer
+    (let* ((default-directory
+            (expand-file-name (or directory default-directory)))
+           (dir-variables (hack-dir-local--get-variables nil)))
+      (when (string-equal (car dir-variables) default-directory)
+        (cdr dir-variables)))))
+
+(defun stage--dir-local-variable (var &optional directory)
+  "Return the value of variable VAR defined in \".dir-locals.el\" of DIRECTORY."
+  (cdr (assq var (stage--dir-local-variables directory))))
 
 
 ;;; Stage
@@ -163,7 +188,7 @@ Ohterwise an error is raised."
 
 
 ;;; Interactive functions
-(defun stage-create (name &optional disable-prompt)
+(defun stage-create (name &optional disable-prompt preset)
   "Create a new stage with NAME."
   (interactive (list (let ((names (stage-names)))
                        (completing-read "create stage: " (stage-preset-names)
@@ -184,7 +209,7 @@ Ohterwise an error is raised."
     (delete-other-windows)
     (switch-to-buffer stage-new-stage-default-buffer)
     ;;
-    (let ((preset (stage-preset name)))
+    (let ((preset (or preset (stage-preset name))))
       (stage-preset-run-commands preset :init)
       (stage-preset-set-default-directory preset)
       (stage-preset-run-commands preset :command))
@@ -264,7 +289,7 @@ Ohterwise an error is raised."
       (setq stage-current-stage nil))
     (setq stage-list (assoc-delete-all name stage-list))))
 
-(defun stage-switch (name)
+(defun stage-switch (name &optional disable-prompt preset)
   "Switch to the stage of NAME.
 
 Before the stage is switched, the current window configuration is
@@ -274,12 +299,14 @@ stage, we reload the current stage's saved configuration."
   (interactive (list (stage-read-name
                       "switch to stage: "
                       (let ((names (stage-names)))
-                        (when names
-                          (append (delete (car names) names) (list (car names))))))))
+                        (if stage-current-stage
+                            (append (delete stage-current-stage names)
+                                    (list stage-current-stage))
+                          names)))))
   (cond ((zerop (length name))
          (error "No name given."))
         ((null stage-list)
-         (stage-create name))
+         (stage-create name disable-prompt preset))
         ((string-equal name stage-current-stage)
          (stage-restore-configuration name)
          (stage-revert-maybe))
@@ -295,8 +322,9 @@ stage, we reload the current stage's saved configuration."
                  (let ((preset (stage-preset name)))
                    (stage-preset-run-commands preset :after-switch)
                    (stage-preset-run-commands preset :command))
-                 (stage-save)))
-           (stage-create name)))))
+                 (stage-save))
+               (message "Switched to stage %s" stage-current-stage))
+           (stage-create name disable-prompt preset)))))
 
 (defun stage-switch-last (arg)
   "Switch to the last visited stage.
@@ -305,7 +333,9 @@ With prefix argument, switch to the least-recently visited stage."
   (let ((names (stage-names)))
     (if (< (length names) 2)
         (message "No stage previously visited.")
-      (let ((name (if arg (car (last names)) (nth 1 names))))
+      (let ((name (cond (arg (car (last names)))
+                        (stage-current-stage (nth 1 names))
+                        (t (nth 0 names)))))
         (stage-switch name)))))
 
 (defun stage-show ()
@@ -314,6 +344,46 @@ With prefix argument, switch to the least-recently visited stage."
   (cond (stage-current-stage (message "%s" stage-current-stage))
         (stage-list (message "no stage selected"))
         (t (message "no stage created"))))
+
+
+;;; Projectile integration
+(defun stage-projectile-project-name (&optional project)
+  "Return project name of projectile PROJECT."
+  (let ((project (or project (projectile-project-root))))
+    (or (stage--dir-local-variable 'projectile-project-name project)
+        (let ((projectile-project-name nil))
+          ;; The variable `projectile-project-name' may not be set for
+          ;; PROJECT at this moment.
+          (projectile-project-name project)))))
+
+(defun stage-switch-projectile (project)
+  "Switch to stage of projectile PROJECT."
+  (interactive (list (projectile-completing-read "switch to project stage: "
+                                                 projectile-known-projects)))
+  (let* ((name (stage-projectile-project-name project))
+         (preset (or (stage-preset name)
+                     `(:init (let ((projectile-switch-project-action
+                                    stage-projectile-switch-project-action))
+                               (projectile-switch-project-by-name ,project))))))
+    (stage-switch name nil preset)))
+
+(defun stage-switch-after-switch-projectile ()
+  "Switch stage to follow projectile project."
+  (let ((name (stage-projectile-project-name)))
+    (setq stage-current-stage name)
+    (setq stage-list (cons (cons name (stage-current-configuration))
+                           (assoc-delete-all name stage-list)))))
+
+(defun stage-switch-dwim (&optional arg)
+  "Switch to stage.
+With a `\\[universal-argument]' prefix argument, call `stage-switch-projectile'.
+With a `\\[universal-argument] `\\[universal-argument]' prefix argument, call `stage-create'.
+Otherwise, call `stage-switch'."
+  (interactive "P")
+  (let ((func (cond ((equal arg '(16)) #'stage-create)
+                    (arg #'stage-switch-projectile)
+                    (t #'stage-switch))))
+    (call-interactively func)))
 
 
 ;;; Stage Minor Mode
@@ -326,10 +396,12 @@ With prefix argument, switch to the least-recently visited stage."
     (define-key map (kbd "k") #'stage-kill)
     (define-key map (kbd "K") #'stage-kill-all)
     (define-key map (kbd "l") #'stage-switch-last)
+    (define-key map (kbd "p") #'stage-switch-projectile)
     (define-key map (kbd "r") #'stage-rename)
     (define-key map (kbd "s") #'stage-save)
     (define-key map (kbd "v") #'stage-revert)
     (define-key map (kbd "w") #'stage-show)
+    (define-key map (kbd ";") #'stage-switch-dwim)
     map)
   "Keymap for Stage commands after `stage-keymap-prefix'.")
 (fset 'stage-command-map stage-command-map)
@@ -361,11 +433,15 @@ Define keys in stage presets."
   (setq stage-list nil)
   (setq stage-current-stage nil)
   (stage-setup-preset)
-  (add-hook 'after-make-frame-functions 'stage-reset-current-stage))
+  (add-hook 'after-make-frame-functions 'stage-reset-current-stage)
+  (add-hook 'projectile-after-switch-project-hook
+            'stage-switch-after-switch-projectile))
 
 (defun stage-cleanup ()
   (stage-kill-all t)
-  (remove-hook 'after-make-frame-functions 'stage-reset-current-stage))
+  (remove-hook 'after-make-frame-functions 'stage-reset-current-stage)
+  (remove-hook 'projectile-after-switch-project-hook
+               'stage-switch-after-switch-projectile))
 
 (define-minor-mode stage-mode
   "Minor mode to manage emacs window sessions.
