@@ -424,6 +424,16 @@ Otherwise, call `stage-switch'."
     map)
   "Keymap for `stage-mode'.")
 
+(defun stage-setup-preset-key (name keys)
+  "Define keys in stage presets."
+  (mapc (lambda (key)
+          (define-key stage-command-map (kbd key)
+                      (cons (format "stage-switch [%s]" name)
+                            `(lambda ()
+                               (interactive)
+                               (stage-switch ,name)))))
+        keys))
+
 (defun stage-setup-preset ()
   "Setup stage presets.
 Define keys in stage presets."
@@ -431,13 +441,7 @@ Define keys in stage presets."
   (mapc (lambda (name)
           (let* ((preset (stage-preset name))
                  (keys (delete nil (stage-preset-options preset :key))))
-            (mapc (lambda (key)
-                    (define-key stage-command-map (kbd key)
-                                (cons (format "stage-switch [%s]" name)
-                                      `(lambda ()
-                                         (interactive)
-                                         (stage-switch ,name)))))
-                  keys)))
+            (stage-setup-preset-key name keys)))
         (stage-preset-names)))
 
 (defun stage-setup ()
