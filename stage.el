@@ -188,12 +188,12 @@ Ohterwise an error is raised."
     (mapc #'stage-run-command commands)))
 
 (defun stage-preset-set-default-directory (preset)
-  "Set `current-directory' accordingly :default-directory parameter in PRESET."
+  "Set `default-directory' accordingly :default-directory parameter in PRESET."
   (let ((dir (car (stage-preset-options preset :default-directory))))
     (when (listp dir)
       (setq dir (funcall `(lambda () ,dir))))
     (when dir
-      (setq current-directory dir))))
+      (setq default-directory dir))))
 
 
 ;;; Interactive functions
