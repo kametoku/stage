@@ -302,9 +302,7 @@ Ohterwise an error is raised."
   "Switch to the stage of NAME.
 
 Before the stage is switched, the current window configuration is
-saved in the current stage.
-As a special case, if the stage we're switching to is the current
-stage, we reload the current stage's saved configuration."
+saved in the current stage."
   (interactive (list (stage-read-name
                       "switch to stage: "
                       (let ((names (cl-remove-duplicates
@@ -319,8 +317,7 @@ stage, we reload the current stage's saved configuration."
         ((null stage-list)
          (stage-create name disable-prompt preset))
         ((string-equal name stage-current-stage)
-         (stage-restore-configuration name)
-         (stage-revert-maybe))
+         (stage-save))
         (t
          (stage-save)
          (if (stage-exists name)
@@ -336,6 +333,13 @@ stage, we reload the current stage's saved configuration."
                  (stage-save))
                (message "Switched to stage %s" stage-current-stage))
            (stage-create name disable-prompt preset)))))
+
+(defun stage-restore ()
+  "Reload the current stage's saved configuration."
+  (interactive)
+  (unless stage-current-stage
+    (error "No stage selected."))
+  (stage-restore-configuration stage-current-stage))
 
 (defun stage-switch-last (arg)
   "Switch to the last visited stage.
@@ -410,6 +414,7 @@ Otherwise, call `stage-switch'."
     (define-key map (kbd "p") #'stage-switch-projectile)
     (define-key map (kbd "r") #'stage-rename)
     (define-key map (kbd "s") #'stage-save)
+    (define-key map (kbd "u") #'stage-restore)
     (define-key map (kbd "v") #'stage-revert)
     (define-key map (kbd "w") #'stage-show)
     (define-key map (kbd ";") #'stage-switch-dwim)
