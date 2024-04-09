@@ -209,7 +209,7 @@ Ohterwise an error is raised."
     (error "System reserved space name: %s" name))
   (when (or (not (stage-exists name))
             disable-prompt
-            (y-or-n-p (format "revert existing stage %s? " name)))
+            (y-or-n-p (format "overwrite existing stage %s? " name)))
     (when stage-current-stage
       (stage-save))
     ;;
@@ -225,7 +225,8 @@ Ohterwise an error is raised."
     ;;
     (setq stage-current-stage name)
     (setq stage-list (cons (cons name (stage-current-configuration))
-                           (assoc-delete-all name stage-list)))))
+                           (assoc-delete-all name stage-list)))
+    (message "Created stage %s" stage-current-stage)))
 
 (defun stage-revert (&optional disable-prompt)
   "Revert the current stage by initializing it."
@@ -235,7 +236,8 @@ Ohterwise an error is raised."
   (when (or disable-prompt
             (y-or-n-p (format "[%s] revert current stage? "
                               stage-current-stage)))
-    (stage-create stage-current-stage t)))
+    (stage-create stage-current-stage t)
+    (message "Reverted stage %s" stage-current-stage)))
 
 (defun stage-revert-maybe ()
   (let* ((preset (stage-preset stage-current-stage))
@@ -261,7 +263,8 @@ Ohterwise an error is raised."
         ((y-or-n-p (format "Rename %s to %s? " stage-current-stage name))
          (setcar (assoc stage-current-stage stage-list) name)
          (setq stage-current-stage name)
-         (stage-save))))
+         (stage-save)
+         (message "Renamed stage to %s" stage-current-stage))))
 
 (defun stage-save ()
   "Save the configuration for the current stage."
@@ -278,7 +281,8 @@ Ohterwise an error is raised."
   (when (and stage-list
              (or disable-prompt (y-or-n-p "Kill all stages? ")))
     (setq stage-list nil)
-    (setq stage-current-stage nil)))
+    (setq stage-current-stage nil)
+    (message "Killed all stages.")))
 
 (defun stage-read-name (prompt &optional collection predicate require-match)
   (or collection (setq collection (stage-names)))
@@ -296,7 +300,8 @@ Ohterwise an error is raised."
       (stage-kill-all)
     (when (string-equal name stage-current-stage)
       (setq stage-current-stage nil))
-    (setq stage-list (assoc-delete-all name stage-list))))
+    (setq stage-list (assoc-delete-all name stage-list))
+    (message "Killed stage %s" name)))
 
 (defun stage-switch (name &optional disable-prompt preset)
   "Switch to the stage of NAME.
@@ -339,7 +344,8 @@ saved in the current stage."
   (interactive)
   (unless stage-current-stage
     (error "No stage selected."))
-  (stage-restore-configuration stage-current-stage))
+  (stage-restore-configuration stage-current-stage)
+  (message "Restore stage %s" stage-current-stage))
 
 (defun stage-switch-last (arg)
   "Switch to the last visited stage.
@@ -356,7 +362,7 @@ With prefix argument, switch to the least-recently visited stage."
 (defun stage-show ()
   "Show the current stage in the minibuffer."
   (interactive)
-  (cond (stage-current-stage (message "%s" stage-current-stage))
+  (cond (stage-current-stage (message "stage: %s" stage-current-stage))
         (stage-list (message "no stage selected"))
         (t (message "no stage created"))))
 
