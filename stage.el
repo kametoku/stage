@@ -307,7 +307,9 @@ As a special case, if the stage we're switching to is the current
 stage, we reload the current stage's saved configuration."
   (interactive (list (stage-read-name
                       "switch to stage: "
-                      (let ((names (stage-names)))
+                      (let ((names (cl-remove-duplicates
+                                    (append (stage-names) (stage-preset-names))
+                                    :test #'string-equal)))
                         (if stage-current-stage
                             (append (delete stage-current-stage names)
                                     (list stage-current-stage))
