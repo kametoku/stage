@@ -117,14 +117,14 @@ Alist of (NAME . (FRAME FRAME-PARAMETERS WINDOW-CONFIGURATION))")
   "Return the saved stage configuration of NAME.
 (FRAME FRAME-PARAMETERS WINDOW-CONFIGURATION)"
   (unless (stage-exists name)
-    (error "Stage '%S' not found." name))
+    (error "Stage %s not found." name))
   (cdr (assoc name stage-list)))
 
 (defun stage-save-configuration (name config)
   "Save the stage configuration CONFIG as NAME.
 NAME must represent an existing stage."
   (unless (stage-exists name)
-    (error "Stage '%S' not found." name))
+    (error "Stage %s not found." name))
   (setcdr (assoc name stage-list) config))
 
 (defun stage-names ()
@@ -134,7 +134,7 @@ NAME must represent an existing stage."
 (defun stage-restore-configuration (name)
   "Restore the stage configuration of NAME."
   (let* ((config (or (stage-configuration name)
-                     (error "Stage '%S' not found." name)))
+                     (error "Stage %s not found." name)))
          (frame (nth 0 config))
          (window-configuration (nth 2 config)))
     (if (frame-live-p frame)
@@ -177,10 +177,10 @@ Ohterwise an error is raised."
         ((and (stringp command) (get-buffer command))
          (switch-to-buffer command))
         ((stringp command)
-         (error "No such file or directory '%s'" command))
+         (error "No such file or directory: %s" command))
         ((listp command) (funcall `(lambda () ,command)))
         ((commandp command) (call-interactively command))
-        (t (error "Cannot handle command '%s'" command))))
+        (t (error "Cannot handle command: %s" command))))
 
 (defun stage-preset-run-commands (preset keyword)
   "Run commands defined in parameters of KEYWORD from PRESET."
@@ -206,10 +206,10 @@ Ohterwise an error is raised."
   (when (zerop (length name))
     (error "No name given."))
   (when (string-equal name "*all*")
-    (error "System reserved space name '%s'." name))
+    (error "System reserved space name: %s" name))
   (when (or (not (stage-exists name))
             disable-prompt
-            (y-or-n-p (format "revert existing stage '%s'? " name)))
+            (y-or-n-p (format "revert existing stage %s? " name)))
     (when stage-current-stage
       (stage-save))
     ;;
@@ -270,7 +270,7 @@ Ohterwise an error is raised."
       (message "Stage not created.")
     (stage-save-configuration stage-current-stage
                               (stage-current-configuration))
-    (message "Saved stage '%s'" stage-current-stage)))
+    (message "Saved stage %s" stage-current-stage)))
 
 (defun stage-kill-all (&optional disable-prompt)
   "Kill all stages. Prompt the user to confirm if DISABLE-PROMPT is nil."
