@@ -315,9 +315,9 @@ saved in the current stage."
                       "switch to stage: "
                       (let ((names (cl-remove-duplicates
                                     (append (stage-names) (stage-preset-names))
-                                    :test #'string-equal)))
+                                    :test #'string-equal :from-end t)))
                         (if stage-current-name
-                            (append (delete stage-current-name names)
+                            (append (cl-remove stage-current-name names)
                                     (list stage-current-name))
                           names)))))
   (when (zerop (length name))
