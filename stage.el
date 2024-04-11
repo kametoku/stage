@@ -174,6 +174,11 @@ If NAME already exists as a stage name, return NAME with suffix \"<NUMBER>\"."
   "Return the list of all preset names."
   (mapcar 'car stage-presets))
 
+(defun stage-preset-nth-name (number)
+  "Return the name of NUMBER-th stage preset.
+NUMBER counts from zero."
+  (nth number (stage-preset-names)))
+
 (defun stage-preset-options (preset keyword)
   "Return options for KEYWORD of stage preset PRESET."
   (seq-take-while (lambda (elt) (not (keywordp elt)))
@@ -362,6 +367,32 @@ saved in the current stage."
         (stage-save))
       (message "Switched to stage %s" stage-current-name))))
 
+(defun stage-switch-preset (number)
+  "Switch to the stage defined in NUMBER-th stage preset.
+NUMBER counts from zero."
+  (interactive (list (read-number "preset number: ")))
+  (let ((name (stage-preset-nth-name number)))
+    (unless name
+      (error "No %dth preset presents." number))
+    (stage-switch name)))
+
+(defmacro stage-defun-stage-switch-reset-nth (number)
+  `(defun ,(intern (format "stage-switch-preset-%d" number)) ()
+     ,(format "Swith to %dth preset stage." number)
+     (interactive)
+     (stage-switch-preset ,number)))
+
+(stage-defun-stage-switch-reset-nth 0)
+(stage-defun-stage-switch-reset-nth 1)
+(stage-defun-stage-switch-reset-nth 2)
+(stage-defun-stage-switch-reset-nth 3)
+(stage-defun-stage-switch-reset-nth 4)
+(stage-defun-stage-switch-reset-nth 5)
+(stage-defun-stage-switch-reset-nth 6)
+(stage-defun-stage-switch-reset-nth 7)
+(stage-defun-stage-switch-reset-nth 8)
+(stage-defun-stage-switch-reset-nth 9)
+
 (defun stage-restore ()
   "Reload the current stage's saved configuration."
   (interactive)
@@ -438,6 +469,7 @@ Otherwise, call `stage-switch'."
     (define-key map (kbd "c") #'stage-create)
     (define-key map (kbd "d") #'stage-duplicate)
     (define-key map (kbd "g") #'stage-switch)
+    (define-key map (kbd "G") #'stage-switch-preset)
     (define-key map (kbd "k") #'stage-kill)
     (define-key map (kbd "K") #'stage-kill-all)
     (define-key map (kbd "l") #'stage-switch-last)
@@ -448,6 +480,16 @@ Otherwise, call `stage-switch'."
     (define-key map (kbd "v") #'stage-revert)
     (define-key map (kbd "w") #'stage-show)
     (define-key map (kbd ";") #'stage-switch-dwim)
+    (define-key map (kbd "0") #'stage-switch-preset-0)
+    (define-key map (kbd "1") #'stage-switch-preset-1)
+    (define-key map (kbd "2") #'stage-switch-preset-2)
+    (define-key map (kbd "3") #'stage-switch-preset-3)
+    (define-key map (kbd "4") #'stage-switch-preset-4)
+    (define-key map (kbd "5") #'stage-switch-preset-5)
+    (define-key map (kbd "6") #'stage-switch-preset-6)
+    (define-key map (kbd "7") #'stage-switch-preset-7)
+    (define-key map (kbd "8") #'stage-switch-preset-8)
+    (define-key map (kbd "9") #'stage-switch-preset-9)
     map)
   "Keymap for Stage commands after `stage-keymap-prefix'.")
 (fset 'stage-command-map stage-command-map)
