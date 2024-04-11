@@ -147,11 +147,28 @@ NAME must represent an existing stage."
 (defun stage-reset-current-stage (&optional frame)
   (setq stage-current-name nil))
 
+(defun stage-base-name (name)
+  "Return name without suffix \"<number>\"."
+  (let ((base (and (stringp name)
+                   (replace-regexp-in-string "<[0-9]+>\\'" "" name))))
+    (if (zerop (length base))
+        "*NONAME*"
+      base)))
+
+(defun stage-unique-name (name)
+  "Return a unique name against existing stage names.
+If NAME already exists as a stage name, return NAME with suffix \"<NUMBER>\"."
+  (let ((names (stage-names))
+        (base (stage-base-name name)))
+    (cl-do* ((i 0 (1+ i))
+             (unique-name base (format "%s<%d>" base i)))
+        ((not (member unique-name names)) unique-name))))
+
 
 ;;; Preset
 (defun stage-preset (name)
   "Return the stage preset of NAME."
-  (cdr (assoc name stage-presets)))
+  (cdr (assoc (stage-base-name name) stage-presets)))
 
 (defun stage-preset-names ()
   "Return the list of all preset names."
@@ -231,6 +248,14 @@ Ohterwise an error is raised."
     (setq stage-list (cons (cons name (stage-current-configuration))
                            (assoc-delete-all name stage-list)))
     (message "Created stage %s" stage-current-name)))
+
+(defun stage-duplicate ()
+  "Create new stage with the current window configuration."
+  (interactive)
+  (when (y-or-n-p (format "[%s] duplicate stage?" (or stage-current-name "")))
+    (let ((name (stage-unique-name stage-current-name))
+          (stage-new-stage-default-buffer nil))
+      (stage-create name))))
 
 (defun stage-revert (&optional disable-prompt)
   "Revert the current stage by initializing it."
@@ -411,6 +436,7 @@ Otherwise, call `stage-switch'."
     (when stage-keymap-prefix
       (define-key map (kbd stage-keymap-prefix) #'stage-switch-last))
     (define-key map (kbd "c") #'stage-create)
+    (define-key map (kbd "d") #'stage-duplicate)
     (define-key map (kbd "g") #'stage-switch)
     (define-key map (kbd "k") #'stage-kill)
     (define-key map (kbd "K") #'stage-kill-all)
