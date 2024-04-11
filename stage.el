@@ -413,6 +413,12 @@ With prefix argument, switch to the least-recently visited stage."
                         (t (nth 0 names)))))
         (stage-switch name)))))
 
+(defun stage-switch-least (arg)
+  "Switch to the least-recently visited stage.
+With prefix argument, switch to the last visited stage."
+  (interactive "P")
+  (stage-switch-last (not arg)))
+
 (defun stage-show ()
   "Show the current stage in the minibuffer."
   (interactive)
@@ -473,6 +479,7 @@ Otherwise, call `stage-switch'."
     (define-key map (kbd "k") #'stage-kill)
     (define-key map (kbd "K") #'stage-kill-all)
     (define-key map (kbd "l") #'stage-switch-last)
+    (define-key map (kbd "n") #'stage-switch-least)
     (define-key map (kbd "p") #'stage-switch-projectile)
     (define-key map (kbd "r") #'stage-rename)
     (define-key map (kbd "s") #'stage-save)
