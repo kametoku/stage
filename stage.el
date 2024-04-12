@@ -74,8 +74,8 @@ See `projectile-switch-project-action' for more information."
 
 (defconst stage-mode-line-format
   '(:eval (cond ((not stage-mode) "")
-                (stage-current-name (format "[s:%s]" stage-current-name))
-                (t "[s]"))))
+                (stage-current-name (format "[S:%s]" stage-current-name))
+                (t "[S]"))))
 (put 'stage-mode-line-format 'risky-local-variable t)
 
 
