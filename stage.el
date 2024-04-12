@@ -244,10 +244,11 @@ Ohterwise an error is raised."
       (delete-other-windows)
       (switch-to-buffer stage-new-stage-default-buffer))
     ;;
-    (let ((preset (or preset (stage-preset name))))
-      (stage-preset-run-commands preset :init)
-      (stage-preset-set-default-directory preset)
-      (stage-preset-run-commands preset :command))
+    (unless (eq preset 'no-preset)
+      (let ((preset (or preset (stage-preset name))))
+        (stage-preset-run-commands preset :init)
+        (stage-preset-set-default-directory preset)
+        (stage-preset-run-commands preset :command)))
     ;;
     (setq stage-current-name name)
     (setq stage-list (cons (cons name (stage-current-configuration))
@@ -260,7 +261,7 @@ Ohterwise an error is raised."
   (when (y-or-n-p (format "[%s] duplicate stage?" (or stage-current-name "")))
     (let ((name (stage-unique-name stage-current-name))
           (stage-new-stage-default-buffer nil))
-      (stage-create name))))
+      (stage-create name nil 'no-preset))))
 
 (defun stage-revert (&optional disable-prompt)
   "Revert the current stage by initializing it."
