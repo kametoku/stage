@@ -295,11 +295,11 @@ Ohterwise an error is raised."
                    (error "No stage created or selected.")
                  (list (read-string (format "[%s] rename stage: "
                                             stage-current-name)
-                                    nil 'stage-rename-hist))))
+                                    stage-current-name 'stage-rename-hist))))
   (cond ((zerop (length name))
          (error "Invalid stage name."))
         ((string-equal name stage-current-name)
-         (error "Cannot rename to the same name."))
+         (stage-save))
         ((y-or-n-p (format "Rename %s to %s? " stage-current-name name))
          (setcar (assoc stage-current-name stage-list) name)
          (setq stage-current-name name)
