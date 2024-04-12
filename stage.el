@@ -164,6 +164,13 @@ If NAME already exists as a stage name, return NAME with suffix \"<NUMBER>\"."
              (unique-name base (format "%s<%d>" base i)))
         ((not (member unique-name names)) unique-name))))
 
+(defun stage-default-stage ()
+  (when stage-new-stage-default-buffer
+    (delete-other-windows)
+    (select-window (split-window))
+    (delete-other-windows)
+    (switch-to-buffer stage-new-stage-default-buffer)))
+
 
 ;;; Preset
 (defun stage-preset (name)
@@ -237,13 +244,7 @@ Ohterwise an error is raised."
             (y-or-n-p (format "overwrite existing stage %s? " name)))
     (when stage-current-name
       (stage-save))
-    ;;
-    (when stage-new-stage-default-buffer
-      (delete-other-windows)
-      (select-window (split-window))
-      (delete-other-windows)
-      (switch-to-buffer stage-new-stage-default-buffer))
-    ;;
+    (stage-default-stage)
     (unless (eq preset 'no-preset)
       (let ((preset (or preset (stage-preset name))))
         (stage-preset-run-commands preset :init)
@@ -314,6 +315,7 @@ Ohterwise an error is raised."
   (interactive)
   (when (and stage-list
              (or disable-prompt (y-or-n-p "Kill all stages? ")))
+    (stage-default-stage)
     (setq stage-list nil)
     (setq stage-current-name nil)
     (message "Killed all stages.")))
@@ -324,18 +326,21 @@ Ohterwise an error is raised."
   (completing-read prompt collection predicate require-match))
 
 (defun stage-kill (name)
-  "Kill the stage given by NAME."
-  (interactive (list
-                (if (null stage-list)
-                    (error "No stage created yet.")
-                  (stage-read-name "kill stage: "
-                                   (append (stage-names) '("*all*")) nil t))))
-  (if (string-equal name "*all*")
-      (stage-kill-all)
-    (when (string-equal name stage-current-name)
-      (setq stage-current-name nil))
-    (setq stage-list (assoc-delete-all name stage-list))
-    (message "Killed stage %s" name)))
+  "Kill the stage of NAME."
+  (interactive (list (stage-read-name "kill stage: "
+                                      (or (stage-names) (error "No stage."))
+                                      nil t)))
+  (cond ((not (stage-exists name))
+         (error "[%s] stage does not exist." name))
+        ((string-equal name stage-current-name)
+         (setq stage-current-name nil)
+         (setq stage-list (assoc-delete-all name stage-list))
+         (if stage-list
+             (stage-switch-last)
+           (stage-default-stage)))
+        (t
+         (setq stage-list (assoc-delete-all name stage-list))))
+    (message "[%s] stage Killed" name))
 
 (defun stage-switch (name &optional disable-prompt preset)
   "Switch to the stage of NAME.
@@ -402,17 +407,18 @@ NUMBER counts from zero."
   (stage-restore-configuration stage-current-name)
   (message "Restore stage %s" stage-current-name))
 
-(defun stage-switch-last (arg)
+(defun stage-switch-last (&optional arg)
   "Switch to the last visited stage.
 With prefix argument, switch to the least-recently visited stage."
   (interactive "P")
-  (let ((names (stage-names)))
-    (if (< (length names) 2)
+  (let* ((names (stage-names))
+         (name (cond (arg (car (last names)))
+                     (stage-current-name (nth 1 names))
+                     (t (nth 0 names)))))
+    (if (or (null name)
+            (string-equal name stage-current-name))
         (message "No stage previously visited.")
-      (let ((name (cond (arg (car (last names)))
-                        (stage-current-name (nth 1 names))
-                        (t (nth 0 names)))))
-        (stage-switch name)))))
+      (stage-switch name))))
 
 (defun stage-switch-least (arg)
   "Switch to the least-recently visited stage.
