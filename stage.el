@@ -171,6 +171,10 @@ If NAME already exists as a stage name, return NAME with suffix \"<NUMBER>\"."
     (delete-other-windows)
     (switch-to-buffer stage-new-stage-default-buffer)))
 
+(defun stage-read-name (prompt &optional collection predicate require-match)
+  (or collection (setq collection (stage-names)))
+  (completing-read prompt collection predicate require-match))
+
 
 ;;; Preset
 (defun stage-preset (name)
@@ -310,21 +314,6 @@ Ohterwise an error is raised."
     (stage-save-configuration stage-current-name (stage-current-configuration))
     (message "Saved stage %s" stage-current-name)))
 
-(defun stage-kill-all (&optional disable-prompt)
-  "Kill all stages. Prompt the user to confirm if DISABLE-PROMPT is nil."
-  (interactive)
-  (when (and stage-list
-             (or disable-prompt (y-or-n-p "Kill all stages? ")))
-    (stage-default-stage)
-    (setq stage-list nil)
-    (setq stage-current-name nil)
-    (message "Killed all stages.")))
-
-(defun stage-read-name (prompt &optional collection predicate require-match)
-  (or collection (setq collection (stage-names)))
-;;   (ivy-read prompt collection))
-  (completing-read prompt collection predicate require-match))
-
 (defun stage-kill (name)
   "Kill the stage of NAME."
   (interactive (list (stage-read-name "kill stage: "
@@ -341,6 +330,16 @@ Ohterwise an error is raised."
         (t
          (setq stage-list (assoc-delete-all name stage-list))))
     (message "[%s] stage Killed" name))
+
+(defun stage-kill-all (&optional disable-prompt)
+  "Kill all stages. Prompt the user to confirm if DISABLE-PROMPT is nil."
+  (interactive)
+  (when (and stage-list
+             (or disable-prompt (y-or-n-p "Kill all stages? ")))
+    (stage-default-stage)
+    (setq stage-list nil)
+    (setq stage-current-name nil)
+    (message "Killed all stages.")))
 
 (defun stage-switch (name &optional disable-prompt preset)
   "Switch to the stage of NAME.
