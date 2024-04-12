@@ -334,12 +334,13 @@ Ohterwise an error is raised."
 (defun stage-kill-all (&optional disable-prompt)
   "Kill all stages. Prompt the user to confirm if DISABLE-PROMPT is nil."
   (interactive)
-  (when (and stage-list
-             (or disable-prompt (y-or-n-p "Kill all stages? ")))
-    (stage-default-stage)
-    (setq stage-list nil)
-    (setq stage-current-name nil)
-    (message "Killed all stages.")))
+  (cond ((null stage-list)
+         (message "No stage."))
+        ((or disable-prompt (y-or-n-p "Kill all stages? "))
+         (stage-default-stage)
+         (setq stage-list nil)
+         (setq stage-current-name nil)
+         (message "Killed all stages."))))
 
 (defun stage-switch (name &optional disable-prompt preset)
   "Switch to the stage of NAME.
