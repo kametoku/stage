@@ -111,7 +111,8 @@ Alist of (NAME . (FRAME FRAME-PARAMETERS WINDOW-CONFIGURATION))")
   "Return the current stage configuration in the form of
 (FRAME FRAME-PARAMETERS WINDOW-CONFIGURATION)."
   (let ((frame (selected-frame)))
-    (list frame (frame-parameters frame) (current-window-configuration))))
+    (list frame (frame-parameters frame)
+          (current-window-configuration) (point-marker))))
 
 (defun stage-configuration (name)
   "Return the saved stage configuration of NAME.
@@ -136,13 +137,15 @@ NAME must represent an existing stage."
   (let* ((config (or (stage-configuration name)
                      (error "Stage %s not found." name)))
          (frame (nth 0 config))
-         (window-configuration (nth 2 config)))
+         (window-configuration (nth 2 config))
+         (point (nth 3 config)))
     (if (frame-live-p frame)
         (select-frame-set-input-focus frame)
       (let* ((fram-parameters (nth 1 config))
              (frame (make-frame frame-parameters)))
         (setf (nth 0 config) frame)))
-    (set-window-configuration window-configuration)))
+    (set-window-configuration window-configuration)
+    (goto-char point)))
 
 (defun stage-reset-current-stage (&optional frame)
   (setq stage-current-name nil))
