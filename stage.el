@@ -74,7 +74,7 @@ See `projectile-switch-project-action' for more information."
 
 (defconst stage-mode-line-format
   '(:eval (cond ((not stage-mode) "")
-                (stage-current-name (format "[S:%s]" stage-current-name))
+                ((stage-current-name) (format "[S:%s]" (stage-current-name)))
                 (t "[S]"))))
 (put 'stage-mode-line-format 'risky-local-variable t)
 
@@ -96,59 +96,56 @@ file of DIRECTORY."
 
 
 ;;; Stage
-(defvar stage-list nil
-  "List of available stages.
-Alist of (NAME . (FRAME FRAME-PARAMETERS WINDOW-CONFIGURATION))")
+(defsubst stage-list (&optional frame)
+  "Return list of available stages in FRAME.
+Alist of (NAME . (WINDOW-CONFIGURATION MARKER))"
+  (frame-parameter frame 'stage-list))
 
-(defvar stage-current-name nil
-  "The name of the currently selected stage.")
+(defsubst set-stage-list (stage-list &optional frame)
+  "Set the stage list in FRAME to STAGE-LIST."
+  (set-frame-parameter frame 'stage-list stage-list))
+
+(defsubst stage-current-name (&optional frame)
+  "Return the name of the currently selected stage in FRAME"
+  (frame-parameter frame 'stage-current-name))
+
+(defsubst set-stage-current-name (name &optional frame)
+  "Set the name of the currently selected stage in FRAME to NAME"
+  (set-frame-parameter frame 'stage-current-name name))
 
 (defun stage-exists (name)
   "Return non-nil if the spage of NAME exists, otherwise return nil."
-  (assoc name stage-list))
+  (assoc name (stage-list)))
 
 (defun stage-current-configuration ()
   "Return the current stage configuration in the form of
-(FRAME FRAME-PARAMETERS WINDOW-CONFIGURATION)."
-  (let ((frame (selected-frame)))
-    (list frame (frame-parameters frame)
-          (current-window-configuration) (point-marker))))
+(WINDOW-CONFIGURATION MARKER)."
+  (list (current-window-configuration) (point-marker)))
 
 (defun stage-configuration (name)
   "Return the saved stage configuration of NAME.
-(FRAME FRAME-PARAMETERS WINDOW-CONFIGURATION)"
+(WINDOW-CONFIGURATION MARKER)"
   (unless (stage-exists name)
     (error "Stage %s not found." name))
-  (cdr (assoc name stage-list)))
+  (cdr (assoc name (stage-list))))
 
 (defun stage-save-configuration (name config)
   "Save the stage configuration CONFIG as NAME.
 NAME must represent an existing stage."
   (unless (stage-exists name)
     (error "Stage %s not found." name))
-  (setcdr (assoc name stage-list) config))
+  (setcdr (assoc name (stage-list)) config))
 
 (defun stage-names ()
   "Return the list of all stage names."
-  (mapcar 'car stage-list))
+  (mapcar 'car (stage-list)))
 
 (defun stage-restore-configuration (name)
   "Restore the stage configuration of NAME."
-  (let* ((config (or (stage-configuration name)
-                     (error "Stage %s not found." name)))
-         (frame (nth 0 config))
-         (window-configuration (nth 2 config))
-         (point (nth 3 config)))
-    (if (frame-live-p frame)
-        (select-frame-set-input-focus frame)
-      (let* ((fram-parameters (nth 1 config))
-             (frame (make-frame frame-parameters)))
-        (setf (nth 0 config) frame)))
-    (set-window-configuration window-configuration)
-    (goto-char point)))
-
-(defun stage-reset-current-stage (&optional frame)
-  (setq stage-current-name nil))
+  (let ((config (or (stage-configuration name)
+                    (error "Stage %s not found." name))))
+    (set-window-configuration (nth 0 config))
+    (goto-char (nth 1 config))))
 
 (defun stage-base-name (name)
   "Return name without suffix \"<number>\"."
@@ -249,7 +246,7 @@ Ohterwise an error is raised."
   (when (or (not (stage-exists name))
             disable-prompt
             (y-or-n-p (format "overwrite existing stage %s? " name)))
-    (when stage-current-name
+    (when (stage-current-name)
       (stage-save))
     (stage-default-stage)
     (unless (eq preset 'no-preset)
@@ -258,32 +255,32 @@ Ohterwise an error is raised."
         (stage-preset-set-default-directory preset)
         (stage-preset-run-commands preset :command)))
     ;;
-    (setq stage-current-name name)
-    (setq stage-list (cons (cons name (stage-current-configuration))
-                           (assoc-delete-all name stage-list)))
-    (message "Created stage %s" stage-current-name)))
+    (set-stage-current-name name)
+    (set-stage-list (cons (cons name (stage-current-configuration))
+                          (assoc-delete-all name (stage-list))))
+    (message "Created stage %s" (stage-current-name))))
 
 (defun stage-duplicate ()
   "Create new stage with the current window configuration."
   (interactive)
-  (when (y-or-n-p (format "[%s] duplicate stage?" (or stage-current-name "")))
-    (let ((name (stage-unique-name stage-current-name))
+  (when (y-or-n-p (format "[%s] duplicate stage?" (or (stage-current-name) "")))
+    (let ((name (stage-unique-name (stage-current-name)))
           (stage-new-stage-default-buffer nil))
       (stage-create name nil 'no-preset))))
 
 (defun stage-revert (&optional disable-prompt)
   "Revert the current stage by initializing it."
   (interactive "P")
-  (unless stage-current-name
+  (unless (stage-current-name)
     (error "No stage selected."))
   (when (or disable-prompt
             (y-or-n-p (format "[%s] revert current stage? "
-                              stage-current-name)))
-    (stage-create stage-current-name t)
-    (message "Reverted stage %s" stage-current-name)))
+                              (stage-current-name))))
+    (stage-create (stage-current-name) t)
+    (message "Reverted stage %s" (stage-current-name))))
 
 (defun stage-revert-maybe ()
-  (let* ((preset (stage-preset stage-current-name))
+  (let* ((preset (stage-preset (stage-current-name)))
          (major-modes (stage-preset-options preset :major-mode)))
     (when (and major-modes
                (not (memq major-mode major-modes)))
@@ -294,28 +291,28 @@ Ohterwise an error is raised."
 
 (defun stage-rename (name)
   "Rename the current stage to NAME."
-  (interactive (if (null stage-current-name)
+  (interactive (if (null (stage-current-name))
                    (error "No stage created or selected.")
                  (list (read-string (format "[%s] rename stage: "
-                                            stage-current-name)
-                                    stage-current-name 'stage-rename-hist))))
+                                            (stage-current-name))
+                                    (stage-current-name) 'stage-rename-hist))))
   (cond ((zerop (length name))
          (error "Invalid stage name."))
-        ((string-equal name stage-current-name)
+        ((string-equal name (stage-current-name))
          (stage-save))
-        ((y-or-n-p (format "Rename %s to %s? " stage-current-name name))
-         (setcar (assoc stage-current-name stage-list) name)
-         (setq stage-current-name name)
+        ((y-or-n-p (format "Rename %s to %s? " (stage-current-name) name))
+         (setcar (assoc (stage-current-name) (stage-list)) name)
+         (set-stage-current-name name)
          (stage-save)
-         (message "Renamed stage to %s" stage-current-name))))
+         (message "Renamed stage to %s" (stage-current-name)))))
 
 (defun stage-save ()
   "Save the configuration for the current stage."
   (interactive)
-  (if (null stage-current-name)
-      (message "Stage not created.")
-    (stage-save-configuration stage-current-name (stage-current-configuration))
-    (message "Saved stage %s" stage-current-name)))
+  (if (null (stage-current-name))
+      (message "No stage selected.")
+    (stage-save-configuration (stage-current-name) (stage-current-configuration))
+    (message "Saved stage %s" (stage-current-name))))
 
 (defun stage-kill (name)
   "Kill the stage of NAME."
@@ -324,25 +321,25 @@ Ohterwise an error is raised."
                                       nil t)))
   (cond ((not (stage-exists name))
          (error "[%s] stage does not exist." name))
-        ((string-equal name stage-current-name)
-         (setq stage-current-name nil)
-         (setq stage-list (assoc-delete-all name stage-list))
-         (if stage-list
+        ((string-equal name (stage-current-name))
+         (set-stage-current-name nil)
+         (set-stage-list (assoc-delete-all name (stage-list)))
+         (if (stage-list)
              (stage-switch-last)
            (stage-default-stage)))
         (t
-         (setq stage-list (assoc-delete-all name stage-list))))
+         (set-stage-list (assoc-delete-all name (stage-list)))))
     (message "[%s] stage Killed" name))
 
 (defun stage-kill-all (&optional disable-prompt)
   "Kill all stages. Prompt the user to confirm if DISABLE-PROMPT is nil."
   (interactive)
-  (cond ((null stage-list)
+  (cond ((null (stage-list))
          (message "No stage."))
         ((or disable-prompt (y-or-n-p "Kill all stages? "))
          (stage-default-stage)
-         (setq stage-list nil)
-         (setq stage-current-name nil)
+         (set-stage-list nil)
+         (set-stage-current-name nil)
          (message "Killed all stages."))))
 
 (defun stage-switch (name &optional disable-prompt preset)
@@ -355,9 +352,10 @@ saved in the current stage."
                       (let ((names (cl-remove-duplicates
                                     (append (stage-names) (stage-preset-names))
                                     :test #'string-equal :from-end t)))
-                        (if stage-current-name
-                            (append (cl-remove stage-current-name names)
-                                    (list stage-current-name))
+                        (if (stage-current-name)
+                            (append (cl-remove (stage-current-name) names
+                                               :test #'string-equal)
+                                    (list (stage-current-name)))
                           names)))))
   (when (zerop (length name))
     (error "No name given."))
@@ -365,16 +363,16 @@ saved in the current stage."
   (let ((preset (or preset (stage-preset name))))
     (if (not (stage-exists name))
         (stage-create name disable-prompt preset)
-      (unless (string-equal name stage-current-name)
-        (setq stage-list (cons (assoc name stage-list)
-                               (assoc-delete-all name stage-list)))
-        (setq stage-current-name name)
-        (stage-restore-configuration name))
+      (unless (string-equal name (stage-current-name))
+        (stage-restore-configuration name)
+        (set-stage-current-name name)
+        (set-stage-list (cons (assoc name (stage-list))
+                              (assoc-delete-all name (stage-list)))))
       (unless (stage-revert-maybe)
         (stage-preset-run-commands preset :after-switch)
         (stage-preset-run-commands preset :command)
         (stage-save))
-      (message "Switched to stage %s" stage-current-name))))
+      (message "Switched to stage %s" (stage-current-name)))))
 
 (defun stage-switch-preset (number)
   "Switch to the stage defined in NUMBER-th stage preset.
@@ -405,25 +403,24 @@ NUMBER counts from zero."
 (defun stage-restore ()
   "Reload the current stage's saved configuration."
   (interactive)
-  (unless stage-current-name
+  (unless (stage-current-name)
     (error "No stage selected."))
-  (stage-restore-configuration stage-current-name)
-  (message "Restore stage %s" stage-current-name))
+  (stage-restore-configuration (stage-current-name))
+  (message "Restore stage %s" (stage-current-name)))
 
 (defun stage-switch-last (&optional arg)
   "Switch to the last visited stage.
 With prefix argument, switch to the least-recently visited stage."
   (interactive "P")
-  (let* ((names (stage-names))
-         (name (cond (arg (car (last names)))
-                     (stage-current-name (nth 1 names))
-                     (t (nth 0 names)))))
-    (if (or (null name)
-            (string-equal name stage-current-name))
-        (message "No stage previously visited.")
+  (let* ((names (if arg (reverse (stage-names)) (stage-names)))
+         (name (if (string-equal (nth 0 names) (stage-current-name))
+                   (nth 1 names)
+                 (nth 0 names))))
+    (if (null name)
+        (message "No stage previously selected.")
       (stage-switch name))))
 
-(defun stage-switch-least (arg)
+(defun stage-switch-least (&optional arg)
   "Switch to the least-recently visited stage.
 With prefix argument, switch to the last visited stage."
   (interactive "P")
@@ -432,8 +429,8 @@ With prefix argument, switch to the last visited stage."
 (defun stage-show ()
   "Show the current stage in the minibuffer."
   (interactive)
-  (cond (stage-current-name (message "stage: %s" stage-current-name))
-        (stage-list (message "no stage selected"))
+  (cond ((stage-current-name) (message "stage: %s" (stage-current-name)))
+        ((stage-list) (message "no stage selected"))
         (t (message "no stage created"))))
 
 
@@ -539,10 +536,9 @@ Define keys in stage presets."
         (stage-preset-names)))
 
 (defun stage-setup ()
-  (setq stage-list nil)
-  (setq stage-current-name nil)
+  (set-stage-list nil)
+  (set-stage-current-name nil)
   (stage-setup-preset)
-  (add-hook 'after-make-frame-functions 'stage-reset-current-stage)
   (advice-add 'projectile-switch-project-by-name :around
               #'stage-switch-projectile-after)
   (advice-add 'counsel-projectile-switch-project-by-name :around
@@ -550,7 +546,6 @@ Define keys in stage presets."
 
 (defun stage-cleanup ()
   (stage-kill-all t)
-  (remove-hook 'after-make-frame-functions 'stage-reset-current-stage)
   (advice-remove 'projectile-switch-project-by-name
                  #'stage-switch-projectile-after)
   (advice-remove 'counsel-projectile-switch-project-by-name
