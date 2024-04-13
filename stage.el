@@ -241,8 +241,6 @@ Ohterwise an error is raised."
                                           (not (member preset names)))))))
   (when (zerop (length name))
     (error "No name given."))
-  (when (string-equal name "*all*")
-    (error "System reserved space name: %s" name))
   (when (or (not (stage-exists name))
             disable-prompt
             (y-or-n-p (format "overwrite existing stage %s? " name)))
