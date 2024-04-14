@@ -47,13 +47,16 @@
 
 (defcustom stage-presets nil
   "List of default stage presets.
+Each preset defines the behaviors when the stage of NAME is
+created or selected.
 
 Element of the list: (NAME [:keyword option...]...)
 
 :key                the hot key to create/switch to the stage.
 :init               commands, functions, files, directories, and/or buffer names
-                    to call or open when the stage is created.
+                    to be called or opened in order when the stage is created.
                     The parameters could be string, list, command, or function.
+                    See also `stage-run-command'.
 :default-directory  the default directory name of the stage.
 :after-switch       commands and so on when the stage is switched to.
 :command            commands and so on when the stage is created or
@@ -75,7 +78,8 @@ See `projectile-switch-project-action' for more information."
 (defconst stage-mode-line-format
   '(:eval (cond ((not stage-mode) "")
                 ((stage-current-name) (format "[S:%s]" (stage-current-name)))
-                (t "[S]"))))
+                (t "[S]")))
+  "Mode line format for Stage mode.")
 (put 'stage-mode-line-format 'risky-local-variable t)
 
 
@@ -158,7 +162,7 @@ The suffix could be a arbitrary string."
 
 (defun stage-unique-name (name)
   "Return a unique name against existing stage names.
-If NAME already exists as a stage name, return NAME with suffix \"<NUMBER>\"."
+If NAME already exists as a stage name, return NAME with a suffix \"<NUMBER>\"."
   (let ((names (stage-names))
         (base (stage-base-name name)))
     (cl-do* ((i 0 (1+ i))
@@ -166,6 +170,9 @@ If NAME already exists as a stage name, return NAME with suffix \"<NUMBER>\"."
         ((not (member unique-name names)) unique-name))))
 
 (defun stage-default-stage ()
+  "Build the window configuration and the buffer as the default stage.
+Make the current frame the single window frame and switch the current buffer
+to `stage-new-stage-default-buffer'."
   (when stage-new-stage-default-buffer
     (delete-other-windows)
     (select-window (split-window))
@@ -173,13 +180,15 @@ If NAME already exists as a stage name, return NAME with suffix \"<NUMBER>\"."
     (switch-to-buffer stage-new-stage-default-buffer)))
 
 (defun stage-read-name (prompt &optional collection predicate require-match)
+  "Read a stage name in the minibuffer with completion."
   (or collection (setq collection (stage-names)))
   (completing-read prompt collection predicate require-match))
 
 
 ;;; Preset
 (defun stage-preset (name)
-  "Return the stage preset of NAME."
+  "Return the stage preset of NAME.
+See `stage-presets' for the detail of return value."
   (cdr (assoc (stage-base-name name) stage-presets)))
 
 (defun stage-preset-names ()
@@ -276,6 +285,7 @@ Ohterwise an error is raised."
   (message "Reverted stage %s" name))
 
 (defun stage-revert-maybe ()
+  "Revert the current stage if any conditions match."
   (let* ((preset (stage-preset (stage-current-name)))
          (major-modes (stage-preset-options preset :major-mode)))
     (when (and major-modes
@@ -380,6 +390,7 @@ NUMBER counts from zero."
     (stage-switch name)))
 
 (defmacro stage-defun-stage-switch-preset-nth (number)
+  "defun a stage-switch-preset-NUMBER function."
   `(defun ,(intern (format "stage-switch-preset-%d" number)) ()
      ,(format "Swith to %dth preset stage." number)
      (interactive)
@@ -405,8 +416,8 @@ NUMBER counts from zero."
   (message "Restore stage %s" (stage-current-name)))
 
 (defun stage-switch-last (&optional arg)
-  "Switch to the last visited stage.
-With prefix argument, switch to the least-recently visited stage."
+  "Switch to the last selected stage.
+With prefix argument, switch to the least-recently selected stage."
   (interactive "P")
   (let* ((names (if arg (reverse (stage-names)) (stage-names)))
          (name (if (string-equal (nth 0 names) (stage-current-name))
@@ -417,13 +428,13 @@ With prefix argument, switch to the least-recently visited stage."
       (stage-switch name))))
 
 (defun stage-switch-least (&optional arg)
-  "Switch to the least-recently visited stage.
-With prefix argument, switch to the last visited stage."
+  "Switch to the least-recently selected stage.
+With prefix argument, switch to the last selected stage."
   (interactive "P")
   (stage-switch-last (not arg)))
 
 (defun stage-show ()
-  "Show the current stage in the minibuffer."
+  "Show the current stage name in the minibuffer."
   (interactive)
   (cond ((stage-current-name) (message "stage: %s" (stage-current-name)))
         ((stage-list) (message "no stage selected"))
