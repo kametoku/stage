@@ -259,6 +259,10 @@ Ohterwise an error is raised."
     (stage-default-stage)
     (unless (eq preset 'no-preset)
       (let ((preset (or preset (stage-preset name))))
+;;         (with-temp-buffer
+;;           (stage-preset-set-default-directory preset)
+;;           (stage-preset-run-commands preset :init)
+;;           (stage-preset-run-commands preset :command))))
         (stage-preset-run-commands preset :init)
         (stage-preset-set-default-directory preset)
         (stage-preset-run-commands preset :command)))
@@ -462,7 +466,7 @@ With prefix argument, switch to the last selected stage."
                                     stage-projectile-switch-project-action))
                                (projectile-switch-project-by-name ,project)))))
          (stage-new-stage-default-buffer nil))
-    (stage-create name disable-prompt preset)))
+    (stage-switch name disable-prompt preset)))
 
 (defun stage-switch-projectile-after (func project &rest args)
   "Switch to stage of projectile PROJECT after invoking FUNC with PROJECT and ARGS."
