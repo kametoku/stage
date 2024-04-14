@@ -148,9 +148,10 @@ NAME must represent an existing stage."
     (goto-char (nth 1 config))))
 
 (defun stage-base-name (name)
-  "Return name without suffix \"<number>\"."
+  "Return name without suffix \"<suffix>\".
+The suffix could be a arbitrary string."
   (let ((base (and (stringp name)
-                   (replace-regexp-in-string "<[0-9]+>\\'" "" name))))
+                   (replace-regexp-in-string "<.*>\\'" "" name))))
     (if (zerop (length base))
         "*NONAME*"
       base)))
