@@ -267,23 +267,20 @@ Ohterwise an error is raised."
           (stage-new-stage-default-buffer nil))
       (stage-create name nil 'no-preset))))
 
-(defun stage-revert (&optional disable-prompt)
-  "Revert the current stage by initializing it."
-  (interactive "P")
-  (unless (stage-current-name)
+(defun stage-revert (name)
+  "Revert the stage of NAME by initializing it."
+  (interactive (list (completing-read "revert stage: " (stage-names) nil t)))
+  (unless name
     (error "No stage selected."))
-  (when (or disable-prompt
-            (y-or-n-p (format "[%s] revert current stage? "
-                              (stage-current-name))))
-    (stage-create (stage-current-name) t)
-    (message "Reverted stage %s" (stage-current-name))))
+  (stage-create name t)
+  (message "Reverted stage %s" name))
 
 (defun stage-revert-maybe ()
   (let* ((preset (stage-preset (stage-current-name)))
          (major-modes (stage-preset-options preset :major-mode)))
     (when (and major-modes
                (not (memq major-mode major-modes)))
-      (stage-revert t)
+      (stage-revert (stage-current-name))
       t)))
 
 (defvar stage-rename-hist nil)
