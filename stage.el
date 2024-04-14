@@ -244,7 +244,16 @@ Ohterwise an error is raised."
 
 ;;; Interactive functions
 (defun stage-create (name &optional disable-prompt preset)
-  "Create a new stage with NAME."
+  "Create a new stage with NAME.
+
+If the stage already exists and DISABLE-PROMPT is non-nil,
+the user is prompted to overwrite existing stage or not.
+
+The stage is initialized with PRESET.
+If PRESET is nil and the preset for NAME is defined in `stage-presets' list,
+the preset in the list is applied to initialize the stage.
+If PRESET is 'no-preset or the preset for NAME is not found in `stage-presets',
+the stage is initialized by calling `stage-default-stage'."
   (interactive (list (let ((names (stage-names)))
                        (completing-read "create stage: " (stage-preset-names)
                                         (lambda (preset)
@@ -256,17 +265,16 @@ Ohterwise an error is raised."
             (y-or-n-p (format "overwrite existing stage %s? " name)))
     (when (stage-current-name)
       (stage-save))
-    (stage-default-stage)
-    (unless (eq preset 'no-preset)
-      (let ((preset (or preset (stage-preset name))))
-;;         (with-temp-buffer
-;;           (stage-preset-set-default-directory preset)
-;;           (stage-preset-run-commands preset :init)
-;;           (stage-preset-run-commands preset :command))))
-        (stage-preset-run-commands preset :init)
-        (stage-preset-set-default-directory preset)
-        (stage-preset-run-commands preset :command)))
-    ;;
+    (let ((preset (cond ((eq preset 'no-preset) nil)
+                        ((or preset
+                             (stage-preset name))))))
+      (if preset
+          (with-temp-buffer
+            (stage-preset-set-default-directory preset)
+            (stage-preset-run-commands preset :init)
+            (stage-preset-run-commands preset :command)
+            (delete-other-windows))
+        (stage-default-stage)))
     (set-stage-current-name name)
     (set-stage-list (cons (cons name (stage-current-configuration))
                           (assoc-delete-all name (stage-list))))
