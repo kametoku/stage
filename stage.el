@@ -271,9 +271,9 @@ Ohterwise an error is raised."
   (let ((commands (stage-preset-options preset keyword)))
     (mapc #'stage-run-command commands)))
 
-(defun stage-preset-set-default-directory (preset)
-  "Set `default-directory' accordingly :default-directory parameter in PRESET."
-  (let ((dir (car (stage-preset-options preset :default-directory))))
+(defun stage-preset-set-default-directory (preset keyword)
+  "Set `default-directory' accordingly KEYWORD parameter in PRESET."
+  (let ((dir (car (stage-preset-options preset keyword))))
     (when (listp dir)
       (setq dir (funcall `(lambda () ,dir))))
     (when dir
@@ -283,7 +283,7 @@ Ohterwise an error is raised."
   "Build the window configuration and the buffer from PRESET."
   (let ((buf (save-window-excursion
                (with-temp-buffer
-                 (stage-preset-set-default-directory preset)
+                 (stage-preset-set-default-directory preset :default-directory)
                  (stage-preset-run-commands preset :init)
                  (stage-preset-run-commands preset :command)
                  (current-buffer)))))
