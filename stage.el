@@ -98,6 +98,17 @@ file of DIRECTORY."
   "Return the value of variable VAR defined in \".dir-locals.el\" of DIRECTORY."
   (cdr (assq var (stage--dir-local-variables directory))))
 
+(defun stage--run-once (func &optional args)
+  "Return an anonymous function that calls FUNC with ARGS exactly once."
+  (lexical-let ((func func)
+                (args args)
+                executed)
+    (lambda ()
+      (unless executed
+        (prog1
+            (apply func args)
+          (setq executed t))))))
+
 
 ;;; Stage
 (defsubst stage-list (&optional frame)
@@ -186,10 +197,25 @@ to `stage-new-stage-default-buffer'."
 
 
 ;;; Preset
+(defsubst stage-presets-cache (&optional frame)
+  "Return the cache of presets in FRAME"
+  (frame-parameter frame 'stage-presets-cache))
+
+(defsubst set-stage-presets-cache (presets &optional frame)
+  "Set the cache of presets in FRAME to PRESETS"
+  (set-frame-parameter frame 'stage-presets-cache presets))
+
+(defun update-stage-presets-cache (name preset &optional frame)
+  (let ((cache (assoc-delete-all name (stage-presets-cache))))
+    (if preset
+        (set-stage-presets-cache (cons (cons name preset) cache))
+      (set-stage-presets-cache cache))))
+
 (defun stage-preset (name)
   "Return the stage preset of NAME.
 See `stage-presets' for the detail of return value."
-  (cdr (assoc (stage-base-name name) stage-presets)))
+  (cdr (or (assoc name (stage-presets-cache))
+           (assoc (stage-base-name name) stage-presets))))
 
 (defun stage-preset-names ()
   "Return the list of all preset names."
@@ -241,6 +267,19 @@ Ohterwise an error is raised."
     (when dir
       (setq default-directory dir))))
 
+(defun stage-preset-stage (preset)
+  "Build the window configuration and the buffer from PRESET."
+  (let ((buf (save-window-excursion
+               (with-temp-buffer
+                 (stage-preset-set-default-directory preset)
+                 (stage-preset-run-commands preset :init)
+                 (stage-preset-run-commands preset :command)
+                 (current-buffer)))))
+    (when (buffer-live-p buf)
+      (switch-to-buffer buf))
+    (delete-other-windows)
+    (update-stage-presets-cache name preset)))
+
 
 ;;; Interactive functions
 (defun stage-create (name &optional disable-prompt preset)
@@ -269,12 +308,9 @@ the stage is initialized by calling `stage-default-stage'."
                         ((or preset
                              (stage-preset name))))))
       (if preset
-          (with-temp-buffer
-            (stage-preset-set-default-directory preset)
-            (stage-preset-run-commands preset :init)
-            (stage-preset-run-commands preset :command)
-            (delete-other-windows))
-        (stage-default-stage)))
+          (stage-preset-stage preset)
+        (stage-default-stage))
+      (update-stage-presets-cache name preset))
     (set-stage-current-name name)
     (set-stage-list (cons (cons name (stage-current-configuration))
                           (assoc-delete-all name (stage-list))))
@@ -320,6 +356,8 @@ the stage is initialized by calling `stage-default-stage'."
          (stage-save))
         ((y-or-n-p (format "Rename %s to %s? " (stage-current-name) name))
          (setcar (assoc (stage-current-name) (stage-list)) name)
+         (update-stage-presets-cache name (stage-presets-cache
+                                           (stage-current-name)))
          (set-stage-current-name name)
          (stage-save)
          (message "Renamed stage to %s" (stage-current-name)))))
@@ -340,6 +378,7 @@ the stage is initialized by calling `stage-default-stage'."
   (cond ((not (stage-exists name))
          (error "[%s] stage does not exist." name))
         ((string-equal name (stage-current-name))
+         (update-stage-presets-cache name nil)
          (set-stage-current-name nil)
          (set-stage-list (assoc-delete-all name (stage-list)))
          (if (stage-list)
@@ -358,6 +397,7 @@ the stage is initialized by calling `stage-default-stage'."
          (stage-default-stage)
          (set-stage-list nil)
          (set-stage-current-name nil)
+         (set-stage-presets-cache nil)
          (message "Killed all stages."))))
 
 (defun stage-switch (name &optional disable-prompt preset)
@@ -463,6 +503,13 @@ With prefix argument, switch to the last selected stage."
           ;; PROJECT at this moment.
           (projectile-project-name project)))))
 
+(defun stage-projectile-init (project)
+  "Initialize the stage for projectile PROJECT."
+  (let ((default-directory project))
+    (if stage-projectile-switch-project-action
+        (funcall stage-projectile-switch-project-action)
+      (projectile-dired))))
+
 (defun stage-switch-projectile (project &optional disable-prompt preset)
   "Switch to stage of projectile PROJECT."
   (interactive (list (projectile-completing-read "switch to project stage: "
@@ -470,16 +517,16 @@ With prefix argument, switch to the last selected stage."
   (let* ((name (stage-projectile-project-name project))
          (preset (or preset
                      (stage-preset name)
-                     `(:init (let ((projectile-switch-project-action
-                                    stage-projectile-switch-project-action))
-                               (projectile-switch-project-by-name ,project)))))
+                     (list :init `(stage-projectile-init ,project))))
          (stage-new-stage-default-buffer nil))
     (stage-switch name disable-prompt preset)))
 
 (defun stage-switch-projectile-after (func project &rest args)
   "Switch to stage of projectile PROJECT after invoking FUNC with PROJECT and ARGS."
-  (stage-switch-projectile project t
-                           `(:command (lambda () (apply ,func ',(cons project args))))))
+  (stage-switch-projectile
+   project t
+   (list :init `(stage-projectile-init ,project)
+         :command (stage--run-once func (cons project args)))))
 
 (defun stage-switch-dwim (&optional arg)
   "Switch to stage.
@@ -557,6 +604,7 @@ Define keys in stage presets."
 (defun stage-setup ()
   (set-stage-list nil)
   (set-stage-current-name nil)
+  (set-stage-presets-cache nil)
   (stage-setup-preset)
   (advice-add 'projectile-switch-project-by-name :around
               #'stage-switch-projectile-after)
