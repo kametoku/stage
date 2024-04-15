@@ -137,6 +137,11 @@ Alist of (NAME . (WINDOW-CONFIGURATION MARKER))"
 (WINDOW-CONFIGURATION MARKER)."
   (list (current-window-configuration) (point-marker)))
 
+(defun stage-set-configuration (config)
+  "Set the stage configuration as specified by CONFIG."
+  (set-window-configuration (nth 0 config))
+  (goto-char (nth 1 config)))
+
 (defun stage-configuration (name)
   "Return the saved stage configuration of NAME.
 (WINDOW-CONFIGURATION MARKER)"
@@ -151,6 +156,14 @@ NAME must represent an existing stage."
     (error "Stage %s not found." name))
   (setcdr (assoc name (stage-list)) config))
 
+(defun stage-reproduce-configuration (&optional config)
+  "Return an anonymous function that restores the stage configuration CONFIG.
+If CONFIG is nil, the current stage configuration will be restored."
+  (lexical-let ((config (or config
+                            (stage-current-configuration))))
+    (lambda ()
+      (stage-set-configuration config))))
+
 (defun stage-names ()
   "Return the list of all stage names."
   (mapcar 'car (stage-list)))
@@ -159,8 +172,7 @@ NAME must represent an existing stage."
   "Restore the stage configuration of NAME."
   (let ((config (or (stage-configuration name)
                     (error "Stage %s not found." name))))
-    (set-window-configuration (nth 0 config))
-    (goto-char (nth 1 config))))
+    (stage-set-configuration config)))
 
 (defun stage-base-name (name)
   "Return name without suffix \"<suffix>\".
@@ -322,7 +334,8 @@ the stage is initialized by calling `stage-default-stage'."
   (when (y-or-n-p (format "[%s] duplicate stage?" (or (stage-current-name) "")))
     (let ((name (stage-unique-name (stage-current-name)))
           (stage-new-stage-default-buffer nil))
-      (stage-create name nil 'no-preset))))
+      (stage-create name nil
+                    (list :init (stage-reproduce-configuration))))))
 
 (defun stage-revert (name)
   "Revert the stage of NAME by initializing it."
