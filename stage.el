@@ -369,8 +369,7 @@ the stage is initialized by calling `stage-default-stage'."
          (stage-save))
         ((y-or-n-p (format "Rename %s to %s? " (stage-current-name) name))
          (setcar (assoc (stage-current-name) (stage-list)) name)
-         (update-stage-presets-cache name (stage-presets-cache
-                                           (stage-current-name)))
+         (setcar (assoc (stage-current-name) (stage-presets-cache)) name)
          (set-stage-current-name name)
          (stage-save)
          (message "Renamed stage to %s" (stage-current-name)))))
