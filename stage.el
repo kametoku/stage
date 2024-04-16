@@ -264,7 +264,7 @@ Ohterwise an error is raised."
         ((commandp command) (call-interactively command))
         ((functionp command) (funcall command))
         ((listp command) (funcall `(lambda () ,command)))
-        (t (error "Cannot handle command: %s" command))))
+        (t (error "Cannot handle command: %S" command))))
 
 (defun stage-preset-run-commands (preset keyword)
   "Run commands defined in parameters of KEYWORD from PRESET."
