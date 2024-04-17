@@ -542,14 +542,21 @@ With prefix argument, switch to the last selected stage."
 
 (defun stage-switch-dwim (&optional arg)
   "Switch to stage.
+With a numeric prefix argument, call `stage-switch-preset' with the argument.
 With a `\\[universal-argument]' prefix argument, call `stage-switch-projectile'.
-With a `\\[universal-argument] `\\[universal-argument]' prefix argument, call `stage-create'.
+With a `\\[universal-argument] `\\[universal-argument]' prefix argument, \
+call `stage-revert'.
+With a `\\[universal-argument] `\\[universal-argument]' `\\[universal-argument]' \
+prefix argument, call `stage-create'.
 Otherwise, call `stage-switch'."
   (interactive "P")
-  (let ((func (cond ((equal arg '(16)) #'stage-create)
-                    (arg #'stage-switch-projectile)
-                    (t #'stage-switch))))
-    (call-interactively func)))
+  (if (numberp arg)
+      (stage-switch-preset arg)
+    (let ((func (cond ((equal arg '(64)) #'stage-create)
+                      ((equal arg '(16)) #'stage-revert)
+                      (arg #'stage-switch-projectile)
+                      (t #'stage-switch))))
+      (call-interactively func))))
 
 
 ;;; Stage Minor Mode
