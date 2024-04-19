@@ -281,15 +281,15 @@ Ohterwise an error is raised."
 
 (defun stage-preset-stage (preset)
   "Build the window configuration and the buffer from PRESET."
-  (let ((buf (save-window-excursion
-               (with-temp-buffer
-                 (stage-preset-set-default-directory preset :default-directory)
-                 (stage-preset-run-commands preset :init)
-                 (stage-preset-run-commands preset :command)
-                 (current-buffer)))))
-    (when (buffer-live-p buf)
-      (switch-to-buffer buf))
-    (delete-other-windows)
+  (let ((config
+         (save-window-excursion
+           (delete-other-windows)
+           (with-temp-buffer
+             (stage-preset-set-default-directory preset :default-directory)
+             (stage-preset-run-commands preset :init)
+             (stage-preset-run-commands preset :command)
+             (stage-current-configuration)))))
+    (stage-set-configuration config)
     (update-stage-presets-cache name preset)))
 
 
