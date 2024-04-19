@@ -52,19 +52,18 @@ created or selected.
 
 Element of the list: (NAME [:keyword option...]...)
 
-:key                the hot key to create/switch to the stage.
-:init               commands, functions, files, directories, and/or buffer names
-                    to be called or opened in order when the stage is created.
-                    The parameters could be string, list, command, or function.
-                    See also `stage-run-command'.
-:default-directory  the default directory name of the stage.
-:after-switch       commands and so on when the stage is switched to.
-:command            commands and so on when the stage is created or
-                    switched to.
-:major-mode         primary major modes of the stage.
-                    When the stage is switched to and its major mode
-                    is not any of this parameters, the steage is reverted
-                    by initializing it (the stage is recreated)."
+:key             the hot key to create/switch to the stage.
+:init            commands, functions, files, directories, and/or buffer names
+                 to be called or opened in order when the stage is created.
+                 The parameters could be string, list, command, or function.
+                 See also `stage-run-command'.
+:directory       the default directory name of the stage.
+:after-switched  commands and so on when the stage is switched to.
+:command         commands and so on when the stage is created or switched to.
+:major-mode      primary major modes of the stage.
+                 When the stage is switched to and its major mode
+                 is not any of this parameters, the steage is reverted
+                 by initializing it (the stage is recreated)."
   :group 'stage
   :type 'list)
 
@@ -285,7 +284,7 @@ Ohterwise an error is raised."
          (save-window-excursion
            (delete-other-windows)
            (with-temp-buffer
-             (stage-preset-set-default-directory preset :default-directory)
+             (stage-preset-set-default-directory preset :directory)
              (stage-preset-run-commands preset :init)
              (stage-preset-run-commands preset :command)
              (stage-current-configuration)))))
@@ -439,7 +438,7 @@ saved in the current stage."
                               (assoc-delete-all name (stage-list))))
         (stage-restore-configuration name))
       (unless (stage-revert-maybe)
-        (stage-preset-run-commands preset :after-switch)
+        (stage-preset-run-commands preset :after-switched)
         (stage-preset-run-commands preset :command)
         (stage-save))
       (message "Switched to stage %s" (stage-current-name)))))
