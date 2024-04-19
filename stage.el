@@ -602,11 +602,15 @@ Otherwise, call `stage-switch'."
 (defun stage-setup-preset-key (name keys)
   "Define keys in stage presets."
   (mapc (lambda (key)
-          (define-key stage-command-map (kbd key)
-                      (cons (format "stage-switch [%s]" name)
-                            `(lambda ()
-                               (interactive)
-                               (stage-switch ,name)))))
+          (let ((docstr
+                 (format "Switch to stage %s by invoking `stage-switch'.
+This binding might be generated from `stage-presets'." name)))
+            (define-key stage-command-map (kbd key)
+                        (cons (format "stage-switch [%s]" name)
+                              `(lambda ()
+                                 ,docstr
+                                 (interactive)
+                                 (stage-switch ,name))))))
         keys))
 
 (defun stage-setup-preset ()
