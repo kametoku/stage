@@ -446,7 +446,7 @@ saved in the current stage."
 (defun stage-switch-preset (number)
   "Switch to the stage defined in NUMBER-th stage preset.
 NUMBER counts from zero."
-  (interactive (list (read-number "preset number: ")))
+  (interactive "nstage preset number: ")
   (let ((name (stage-preset-nth-name number)))
     (unless name
       (error "No %dth preset presents." number))
