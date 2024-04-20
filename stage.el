@@ -327,14 +327,11 @@ the stage is initialized by calling `stage-default-stage'."
                           (assoc-delete-all name (stage-list))))
     (message "Created stage %s" (stage-current-name))))
 
-(defun stage-duplicate ()
+(defun stage-duplicate (name)
   "Create new stage with the current window configuration."
-  (interactive)
-  (when (y-or-n-p (format "[%s] duplicate stage?" (or (stage-current-name) "")))
-    (let ((name (stage-unique-name (stage-current-name)))
-          (stage-new-stage-default-buffer nil))
-      (stage-create name nil
-                    (list :init (stage-reproduce-configuration))))))
+  (interactive (list (read-string "duplicate stage to: "
+                                  (stage-unique-name (stage-current-name)))))
+  (stage-create name nil (list :init (stage-reproduce-configuration))))
 
 (defun stage-revert (name)
   "Revert the stage of NAME by initializing it."
