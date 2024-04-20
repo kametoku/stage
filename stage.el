@@ -336,8 +336,8 @@ the stage is initialized by calling `stage-default-stage'."
 (defun stage-revert (name)
   "Revert the stage of NAME by initializing it."
   (interactive (list (completing-read "revert stage: " (stage-names) nil t)))
-  (unless name
-    (error "No stage selected."))
+  (unless (stage-exists name)
+    (error "Stage %s not found. name"))
   (stage-create name t)
   (message "Reverted stage %s" name))
 
