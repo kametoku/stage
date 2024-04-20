@@ -519,7 +519,8 @@ With prefix argument, switch to the last selected stage."
   (let ((default-directory project))
     (if stage-projectile-switch-project-action
         (funcall stage-projectile-switch-project-action)
-      (projectile-dired))))
+      (projectile-dired))
+    (delete-other-windows)))
 
 (defun stage-switch-projectile (project &optional disable-prompt preset)
   "Switch to stage of projectile PROJECT."
