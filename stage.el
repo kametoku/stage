@@ -526,8 +526,7 @@ With prefix argument, switch to the last selected stage."
   (let* ((name (stage-projectile-project-name project))
          (preset (or preset
                      (stage-preset name)
-                     (list :init `(stage-projectile-init ,project))))
-         (stage-new-stage-default-buffer nil))
+                     (list :init `(stage-projectile-init ,project)))))
     (stage-switch name disable-prompt preset)))
 
 (defun stage-switch-projectile-after (func project &rest args)
