@@ -551,7 +551,8 @@ Otherwise, call `stage-switch'."
     (let ((func (cond ((equal arg '(64)) #'stage-create)
                       ((equal arg '(16)) #'stage-revert)
                       (arg #'stage-switch-projectile)
-                      (t #'stage-switch))))
+                      (t #'stage-switch)))
+          (current-prefix-arg nil))
       (call-interactively func))))
 
 
