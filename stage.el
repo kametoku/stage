@@ -74,6 +74,21 @@ See `projectile-switch-project-action' for more information."
   :group 'stage
   :type 'function)
 
+(defcustom stage-after-create-hook nil
+  "Hooks run right after stage is created."
+  :group 'stage
+  :type 'hook)
+
+(defcustom stage-after-switch-hook nil
+  "Hooks run right after stage is switched."
+  :group 'stage
+  :type 'hook)
+
+(defcustom stage-after-restore-hook nil
+  "Hooks run right after stage is restored."
+  :group 'stage
+  :type 'hook)
+
 (defconst stage-mode-line-format
   '(:eval (cond ((not stage-mode) "")
                 ((stage-current-name) (format "[S:%s]" (stage-current-name)))
@@ -325,6 +340,7 @@ the stage is initialized by calling `stage-default-stage'."
     (set-stage-current-name name)
     (set-stage-list (cons (cons name (stage-current-configuration))
                           (assoc-delete-all name (stage-list))))
+    (run-hooks 'stage-after-create-hook)
     (message "Created stage %s" (stage-current-name))))
 
 (defun stage-duplicate (name)
@@ -438,6 +454,7 @@ saved in the current stage."
         (stage-preset-run-commands preset :after-switched)
         (stage-preset-run-commands preset :command)
         (stage-save))
+      (run-hooks 'stage-after-switch-hook)
       (message "Switched to stage %s" (stage-current-name)))))
 
 (defun stage-switch-preset (number)
@@ -473,6 +490,7 @@ NUMBER counts from zero."
   (unless (stage-current-name)
     (error "No stage selected."))
   (stage-restore-configuration (stage-current-name))
+  (run-hooks 'stage-after-restore-hook)
   (message "Restore stage %s" (stage-current-name)))
 
 (defun stage-switch-last (&optional arg)
