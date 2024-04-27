@@ -1,6 +1,8 @@
 #+title: Stage
 #+author: Tokuya Kameshima
 
+[[./emacs-stage-demo.jpg]]
+
 * About stage
 
 ~Stage~ is yet another Emacs window session manager with pre-defined window
