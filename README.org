@@ -1,0 +1,132 @@
+#+title: Stage
+#+author: Tokuya Kameshima
+
+* About stage
+
+~Stage~ is yet another Emacs window session manager with pre-defined window
+configurations.  It can integrate with [[https://github.com/bbatsov/projectile][Projectile]] as it automatically creates a
+window session (called /stage/) when switching to a Projectile project with some
+projectile commands.
+
+* Getting started
+
+** Requirements
+- [[https://github.com/bbatsov/projectile][Projectile]]
+
+** Download and put stage.el to a directory in `load-path'.
+
+The latest version of =stage.el= is available from:
+https://github.com/kametoku/stage
+
+** Edit your =init.el= file
+
+Add the following lines to your =init.el= file for minimum setup.
+
+#+begin_src emacs-lisp
+  (setq stage-keymap-prefix "C-]")
+  (require 'stage)
+  (stage-mode)
+#+end_src
+
+Define stage presets by =stage-presets=:
+
+#+begin_src emacs-lisp
+  ;; sample stage presets
+  (setq stage-presets
+        '(("*agenda*"  :key "a"   :init org-agenda-list
+           :directory (concat org-directory "/")
+           :major-mode org-agenda-mode)
+          ("*orgnote*" :key "o"   :init "~/org/todo.org")
+          ("*mew*"     :key "C-m" :init mew
+           :major-mode mew-summary-mode mew-message-mode mew-draft-mode)
+          ("*mhc*"     :key "C-c" :init mhc-monthly
+           :major-mode mhc-weekly-mode mhc-monthly-mode)
+          ("*vterm*"   :key "C-v" :command vterm)
+          ("*mysql*"   :key "C-q" :command sql-mysql delete-other-windows)
+          ("*scratch*" :key "C-0" :command "*scratch*" :prefer t)
+          ("*dired*"   :key "C-d" :init (dired nil) :major-mode dired-mode)
+          ("*eshell*"  :key "C-e" :command eshell)
+          ("M-x"       :key "x"   :command execute-extended-command)
+          (".emacs.d"  :key "C-9" :init "~/.emacs.d/init.el")
+          ("stage"     :key nil   :init "~/work/kametoku/stage/stage.el")
+          ("orgmine"   :key "Po" "C-4" :init (stage-projectile-init "~/work/kametoku/orgmine"))
+          ("*w3m*"     :key "C-w" :init w3m :major-mode w3m-mode)
+          ("*w3m-search*" :key "." :init w3m-search)))
+
+  ;; Open magit buffer when creating new Projectile project stage.
+  (setq stage-projectile-switch-project-action #'projectile-vc)
+#+end_src
+
+* Usage
+
+** Create a stage
+- =C-] c= (stage-create)
+  Create a new stage.
+- =C-] d= (stage-duplicate)
+  Create new stage with the current window configuration.
+
+** Manipulate the current stage
+- =C-] v= (stage-revert)
+  Revert the stage of NAME by initializing it.
+- =C-] r= (stage-rename)
+  Rename the current stage.
+- =C-] s= (stage-save)
+  Save the configuration for the current stage.
+- =C-] u= (stage-restore)
+  Reload the current stage's saved configuration.
+- =C-] w= (stage-show)
+  Show the current stage name in the minibuffer.
+
+** Delete stages
+- =c-] k= (stage-kill)
+  Kill the stage.
+- =c-] K= (stage-kill)
+  Kill all stages.
+
+** Switch to a stage
+- =C-] g= (stage-switch)
+  Switch to another stage.
+- =C-] l= or =C-] C-]= (stage-switch-last)
+  Switch to the last selected stage.
+- =C-] n= (stage-switch-least)
+  Switch to the least-recently selected stage.
+- =C-] ;= (stage-switch-dwim)
+
+** Switch to a preset stage
+- =C-] G= (stage-switch-preset)
+  Switch to the stage defined in n-th stage preset.
+- =C-] 0= (stage-switch-preset-0)
+  Switch to 0th preset stage.
+- =C-] 1= (stage-switch-preset-1)
+  Switch to 1st preset stage.
+- ...
+- =C-] 9= (stage-switch-preset-9)
+  Switch to 9th preset stage.
+
+** Switch to a stage of Projectile project
+- =C-] p= (stage-switch-projectile)
+  Switch to stage of projectile project.
+- =M-x projectile-switch-project=
+  Switch to a projectile visited before and switch to the stage for it.
+
+* Customize
+- stage-keymap-prefix :: Stage keymap prefix.
+- stage-new-stage-default-buffer :: Default buffer to display in newly-created
+  stage.
+- stage-presets :: List of default stage presets.
+  Each preset defines the behaviors when the stage of NAME is created or selected
+  - :key :: the hot key to create/switch to the stage.
+  - :init :: commands, functions, files, directories, and/or buffer names to be
+    called or opened in order when the stage is created.  The parameters could
+    be string, list, command, or function.  See also =stage-run-command=.
+  - :directory :: the default directory name of the stage.
+  - :after-switched :: commands and so on when the stage is switched to.
+  - :command ::  commands and so on when the stage is created or switched to.
+  - :major-mode :: primary major modes of the stage.  When the stage is switched
+    to and its major mode is not any of this parameters, the steage is reverted
+    by initializing it (the stage is recreated).
+- stage-projectile-switch-project-action :: Action invoked after creating stage
+  with =stage-switch-projectile=.
+- stage-after-create-hook :: Hooks run right after stage is created.
+- stage-after-switch-hook :: Hooks run right after stage is switched.
+- stage-after-restore-hook :: Hooks run right after stage is restored.
