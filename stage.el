@@ -68,7 +68,7 @@ Element of the list: (NAME [:keyword option...]...)
   :type 'list)
 
 (defcustom stage-projectile-switch-project-action #'projectile-dired
-  "Action invoked after creating stage with ‘stage-switch-projectile’.
+  "Action invoked after creating stage with `stage-switch-projectile’.
 
 See `projectile-switch-project-action' for more information."
   :group 'stage
