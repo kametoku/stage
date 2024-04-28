@@ -123,6 +123,13 @@ file of DIRECTORY."
             (apply func args)
           (setq executed t))))))
 
+(defun stage--symbol-value-maybe (symbol)
+  "Return SYMBOL's value.
+Return SYMBOL itself if it is void or a function."
+  (if (and (symbolp symbol) (not (functionp symbol)))
+      (symbol-value symbol)
+    symbol))
+
 
 ;;; Stage
 (defsubst stage-list (&optional frame)
@@ -268,8 +275,7 @@ If COMMAND is a function, `funcall' it.
 If COMMAND is a list, `funcall' it in a lambda form.
 COMMAND also could be a symbol where its value is tested in the above manner.
 Ohterwise an error is raised."
-  (when (and (symbolp command) (not (functionp command)))
-    (setq command (symbol-value command)))
+  (setq command (stage--symbol-value-maybe command))
   (cond ((and (stringp command) (file-directory-p command))
          (dired command))
         ((and (stringp command) (file-exists-p command))
@@ -290,9 +296,12 @@ Ohterwise an error is raised."
 
 (defun stage-preset-set-default-directory (preset keyword)
   "Set `default-directory' accordingly KEYWORD parameter in PRESET."
-  (let ((dir (car (stage-preset-options preset keyword))))
-    (when (listp dir)
-      (setq dir (funcall `(lambda () ,dir))))
+  (let ((dir (stage--symbol-value-maybe
+              (car (stage-preset-options preset keyword)))))
+    (cond ((functionp dir)
+           (setq dir (funcall dir)))
+          ((listp dir)
+           (setq dir (funcall `(lambda () ,dir)))))
     (when dir
       (setq default-directory (file-name-as-directory dir)))))
 
