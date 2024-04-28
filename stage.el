@@ -291,7 +291,7 @@ Ohterwise an error is raised."
     (when (listp dir)
       (setq dir (funcall `(lambda () ,dir))))
     (when dir
-      (setq default-directory dir))))
+      (setq default-directory (file-name-as-directory dir)))))
 
 (defun stage-preset-stage (preset)
   "Build the window configuration and the buffer from PRESET."
