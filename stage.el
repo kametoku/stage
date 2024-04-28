@@ -266,7 +266,10 @@ If COMMAND is a string and there exists tue buffer, open it by `switch-to-buffer
 If COMMAND is an interactive function, `call-interactively' it.
 If COMMAND is a function, `funcall' it.
 If COMMAND is a list, `funcall' it in a lambda form.
+COMMAND also could be a symbol where its value is tested in the above manner.
 Ohterwise an error is raised."
+  (when (and (symbolp command) (not (functionp commane)))
+    (setq command (symbol-value commane)))
   (cond ((and (stringp command) (file-directory-p command))
          (dired command))
         ((and (stringp command) (file-exists-p command))
