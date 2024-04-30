@@ -25,6 +25,13 @@
 
 ;;; Commentary:
 
+;; Stage is yet another Emacs window session manager with pre-defined
+;; window configurations.  It can integrate with Projectile as it
+;; automatically creates a window session (called stage) when
+;; switching to a Projectile project with some projectile commands.
+;; See README.org for more details.
+
+;;; Code:
 
 (require 'projectile)
 
