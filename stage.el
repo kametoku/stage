@@ -137,11 +137,19 @@ Return SYMBOL itself if it is void or a function."
       (symbol-value symbol)
     symbol))
 
+(defun stage--unshift-buffer (buffer)
+  "Put BUFFER at the front of the buffer list
+so that `switch-to-buffer' is able to switch to BUFFER by default."
+  (when (buffer-live-p buffer)
+    (save-window-excursion
+      (switch-to-buffer buffer)
+      (select-window (selected-window) nil))))
+
 
 ;;; Stage
 (defsubst stage-list (&optional frame)
   "Return list of available stages in FRAME.
-Alist of (NAME . (WINDOW-CONFIGURATION MARKER))"
+Alist of (NAME . (WINDOW-CONFIGURATION MARKER OTHER-BUFFER))"
   (frame-parameter frame 'stage-list))
 
 (defsubst set-stage-list (stage-list &optional frame)
@@ -162,17 +170,18 @@ Alist of (NAME . (WINDOW-CONFIGURATION MARKER))"
 
 (defun stage-current-configuration ()
   "Return the current stage configuration in the form of
-(WINDOW-CONFIGURATION MARKER)."
-  (list (current-window-configuration) (point-marker)))
+(WINDOW-CONFIGURATION MARKER OTHER-BUFFER)."
+  (list (current-window-configuration) (point-marker) (other-buffer)))
 
 (defun stage-set-configuration (config)
   "Set the stage configuration as specified by CONFIG."
   (set-window-configuration (nth 0 config))
-  (goto-char (nth 1 config)))
+  (goto-char (nth 1 config))
+  (stage--unshift-buffer (nth 2 config)))
 
 (defun stage-configuration (name)
   "Return the saved stage configuration of NAME.
-(WINDOW-CONFIGURATION MARKER)"
+(WINDOW-CONFIGURATION MARKER OTHER-BUFFER)"
   (unless (stage-exists name)
     (error "Stage %s not found." name))
   (cdr (assoc name (stage-list))))
