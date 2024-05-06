@@ -260,10 +260,11 @@ to `stage-new-stage-default-buffer'."
         (set-stage-presets-cache (cons (cons name preset) cache))
       (set-stage-presets-cache cache))))
 
-(defun stage-preset (name)
+(defun stage-preset (name &optional ignore-cache)
   "Return the stage preset of NAME.
 See `stage-presets' for the detail of return value."
-  (cdr (or (assoc name (stage-presets-cache))
+  (cdr (or (and (not ignore-cache)
+                (assoc name (stage-presets-cache)))
            (assoc (stage-base-name name) stage-presets))))
 
 (defun stage-preset-names ()
@@ -662,7 +663,7 @@ This binding might be generated from `stage-presets'." name)))
 Define keys in stage presets."
   (interactive)
   (mapc (lambda (name)
-          (let* ((preset (stage-preset name))
+          (let* ((preset (stage-preset name t))
                  (keys (delete nil (stage-preset-options preset :key))))
             (stage-setup-preset-key name keys)))
         (stage-preset-names)))
