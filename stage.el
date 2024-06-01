@@ -602,6 +602,20 @@ Otherwise, call `stage-switch'."
           (current-prefix-arg nil))
       (call-interactively func))))
 
+(defun stage-projectile-project (&optional name)
+  "Return projectile project of the stage NAME."
+  (or name (setq name (stage-current-name)))
+  (car (cl-member name projectile-known-projects
+                  :key #'stage-projectile-project-name
+                  :test #'string-equal)))
+
+(defmacro with-current-stage-project (&rest body)
+  "Execute BODY in projectile project of the current stage."
+  `(with-temp-buffer
+     (let ((default-directory (or (stage-projectile-project)
+                                  default-directory)))
+       ,@body)))
+
 
 ;;; Stage Minor Mode
 (defvar stage-command-map
