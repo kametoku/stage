@@ -616,12 +616,19 @@ Otherwise, call `stage-switch'."
                                   default-directory)))
        ,@body)))
 
+(defun stage-projectile-switch-to-buffer ()
+  "Switch to a project buffer of the current stage."
+  (interactive)
+  (with-current-stage-project
+   (projectile-switch-to-buffer)))
+
 
 ;;; Stage Minor Mode
 (defvar stage-command-map
   (let ((map (make-sparse-keymap)))
     (when stage-keymap-prefix
       (define-key map (kbd stage-keymap-prefix) #'stage-switch-last))
+    (define-key map (kbd "b") #'stage-projectile-switch-to-buffer)
     (define-key map (kbd "c") #'stage-create)
     (define-key map (kbd "d") #'stage-duplicate)
     (define-key map (kbd "g") #'stage-switch)
